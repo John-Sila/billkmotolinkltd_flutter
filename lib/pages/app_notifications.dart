@@ -9,7 +9,7 @@ class AppNotifications extends StatelessWidget {
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      // backgroundColor: Colors.white,
       body: SafeArea(
         child: Center(
           child: SizedBox(

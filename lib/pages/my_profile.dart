@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../services/firebase_global.dart';
+import 'package:intl/intl.dart';
+
 
 class MyProfile extends StatelessWidget {
   const MyProfile({super.key});
@@ -6,50 +9,71 @@ class MyProfile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          const Expanded(flex: 2, child: _TopPortion()),
-          Expanded(
-            flex: 3,
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                children: [
-                  Text(
-                    "Richie Lorie",
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+      body: FutureBuilder<Map<String, dynamic>?>(
+        future: FirebaseService.fetchUserData(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('Error loading profile: ${snapshot.error}'),
+            );
+          }
+
+          final userData = snapshot.data;
+          final userName = userData?['userName'] ?? 'Unknown User';
+          final profilePic = userData?['pfp_url'] ??
+              'https://play-lh.googleusercontent.com/-mwzZp4kxOZmCkGEOlOHbLtYz_Vn565KlSBW0zEr-rJfUBV232pRKdOtCnKwccPp2E33';
+
+          return Column(
+            children: [
+              Expanded(flex: 2, child: _TopPortion(profilePic: profilePic)),
+              Expanded(
+                flex: 3,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
                     children: [
-                      FloatingActionButton.extended(
-                        onPressed: () {},
-                        heroTag: 'follow',
-                        elevation: 0,
-                        label: const Text("Change Profile"),
-                        icon: const Icon(Icons.person_add_alt_1),
+                      Text(
+                        userName,
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(width: 16.0),
-                      FloatingActionButton.extended(
-                        onPressed: () {},
-                        heroTag: 'mesage',
-                        elevation: 0,
-                        backgroundColor: Colors.red,
-                        label: const Text("Apply Leave"),
-                        icon: const Icon(Icons.mail_outline),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          FloatingActionButton.extended(
+                            onPressed: () {},
+                            heroTag: 'changeProfile',
+                            elevation: 0,
+                            label: const Text("Change Profile"),
+                            icon: const Icon(Icons.image_search),
+                          ),
+                          const SizedBox(width: 16.0),
+                          FloatingActionButton.extended(
+                            onPressed: () {},
+                            heroTag: 'applyLeave',
+                            elevation: 0,
+                            backgroundColor: Colors.red,
+                            label: const Text("Apply Leave"),
+                            icon: const Icon(Icons.work_outline),
+                          ),
+                        ],
                       ),
+                      const SizedBox(height: 16),
+                      const _ProfileInfoRow(),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  const _ProfileInfoRow(),
-                ],
+                ),
               ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -59,9 +83,9 @@ class _ProfileInfoRow extends StatelessWidget {
   const _ProfileInfoRow();
 
   final List<ProfileInfoItem> _items = const [
-    ProfileInfoItem("Posts", 900),
-    ProfileInfoItem("Followers", 120),
-    ProfileInfoItem("Following", 200),
+    ProfileInfoItem("Daily Target", 900),
+    ProfileInfoItem("Current Deviation", 200),
+    ProfileInfoItem("This Month", 120),
   ];
 
   @override
@@ -88,18 +112,19 @@ class _ProfileInfoRow extends StatelessWidget {
   }
 
   Widget _singleItem(BuildContext context, ProfileInfoItem item) => Column(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-      Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Text(
-          item.value.toString(),
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-        ),
-      ),
-      Text(item.title, style: Theme.of(context).textTheme.bodySmall),
-    ],
-  );
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(
+              item.value.toString(),
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+            ),
+          ),
+          Text(item.title, style: Theme.of(context).textTheme.bodySmall),
+        ],
+      );
 }
 
 class ProfileInfoItem {
@@ -109,7 +134,8 @@ class ProfileInfoItem {
 }
 
 class _TopPortion extends StatelessWidget {
-  const _TopPortion();
+  final String profilePic;
+  const _TopPortion({required this.profilePic});
 
   @override
   Widget build(BuildContext context) {
@@ -139,14 +165,12 @@ class _TopPortion extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 Container(
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: Colors.black,
                     shape: BoxShape.circle,
                     image: DecorationImage(
                       fit: BoxFit.cover,
-                      image: NetworkImage(
-                        'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1470&q=80',
-                      ),
+                      image: NetworkImage(profilePic),
                     ),
                   ),
                 ),
@@ -155,7 +179,8 @@ class _TopPortion extends StatelessWidget {
                   right: 0,
                   child: CircleAvatar(
                     radius: 20,
-                    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                    backgroundColor:
+                        Theme.of(context).scaffoldBackgroundColor,
                     child: Container(
                       margin: const EdgeInsets.all(8.0),
                       decoration: const BoxDecoration(

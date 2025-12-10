@@ -16,7 +16,6 @@ class SplashScreen extends StatelessWidget {
             Text(
               'BILLK MOTOLINK LTD',
               style: TextStyle(
-                color: Colors.white,
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.2,
