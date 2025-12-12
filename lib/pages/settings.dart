@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/pages/my_profile.dart';
 
-class Settings extends StatelessWidget {
-  const Settings({super.key});
+class UserSettings extends StatelessWidget {
+  const UserSettings({super.key});
 
   @override
   Widget build(BuildContext context) {

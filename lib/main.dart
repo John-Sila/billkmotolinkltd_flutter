@@ -1,6 +1,12 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_application_1/pages/charge_batteries.dart';
+import 'package:flutter_application_1/pages/settings.dart';
+import 'package:flutter_application_1/pages/swap_batteries.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/firebase_options.dart';
 
@@ -21,7 +27,6 @@ import 'pages/create_a_memo.dart';
 import 'pages/activity_scheduler.dart';
 import 'pages/reports.dart';
 import 'pages/app_notifications.dart';
-import 'pages/settings.dart';
 import 'pages/login.dart';
 import 'pages/splash_screen.dart';
 
@@ -149,33 +154,49 @@ class MainScaffold extends StatefulWidget {
   State<MainScaffold> createState() => _MainScaffoldState();
 }
 
-class _MainScaffoldState extends State<MainScaffold> {
+class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderStateMixin {
+
+
   int _selectedIndex = 0;
   bool _isDarkMode = false;
 
-  final List<Widget> _pages = const [
+  late AnimationController _controller;
+  bool _isExpanded = false;
+  Timer? _animationTimer;
+
+  final List<Widget> _pages = [
     Dashboard(),
     ClockIn(),
+    SwapBatteries(),
+    ChargeBatteries(),
     ClockOut(),
     Corrections(),
-    Batteries(),
+    Batteries(uid: FirebaseAuth.instance.currentUser!.uid),
     Polls(),
     CreateBudget(),
     Requirements(),
     AssetManager(),
-    UserManager(),
+
+
+    UserManager(
+      
+    ),
+
+
+
     Profiles(),
     CreatePoll(),
     CreateMemo(),
     ActivityScheduler(),
     Reports(),
-    AppNotifications(),
-    Settings(),
+    UserSettings()
   ];
 
   final List<String> _titles = const [
     'Dashboard',
     'Clock In',
+    'Swap Batteries',
+    'Charge Batteries',
     'Clock Out',
     'Correction',
     'Batteries',
@@ -189,7 +210,6 @@ class _MainScaffoldState extends State<MainScaffold> {
     'Create a Memo',
     'Activity Scheduler',
     'Reports',
-    'Notifications',
     'Settings',
   ];
 
@@ -197,6 +217,27 @@ class _MainScaffoldState extends State<MainScaffold> {
   void initState() {
     super.initState();
     _loadThemePreference();
+
+
+     _controller = AnimationController(
+        duration: const Duration(milliseconds: 400),
+        vsync: this,
+      );
+      
+      // Start pulsing animation
+      _startPulsing();
+
+  }
+
+  void _startPulsing() {
+    _animationTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (_isExpanded) {
+        _controller.reverse();
+      } else {
+        _controller.forward();
+      }
+      _isExpanded = !_isExpanded;
+    });
   }
 
   Future<void> _loadThemePreference() async {
@@ -214,6 +255,13 @@ class _MainScaffoldState extends State<MainScaffold> {
   Future<void> _logout() async {
     await FirebaseAuth.instance.signOut();
     widget.onLogout();
+  }
+  
+  @override
+  void dispose() {
+    _controller.dispose();
+    _animationTimer?.cancel();
+    super.dispose();
   }
 
   Widget _buildDrawerItem({
@@ -262,6 +310,77 @@ class _MainScaffoldState extends State<MainScaffold> {
           _titles[_selectedIndex],
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
+        actions: [
+          // Notification icon with count badge
+          StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .doc(FirebaseAuth.instance.currentUser?.uid)
+                .snapshots(),
+            builder: (context, snapshot) {
+              // Get the notification count
+              final notificationCount = snapshot.data?.data() is Map<String, dynamic>
+                  ? (snapshot.data!.data() as Map<String, dynamic>)['numberOfNotifications'] ?? 0
+                  : 0;
+              
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AppNotifications(),
+                        ),
+                      );
+                    },
+                  ),
+                  if (notificationCount > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: AnimatedBuilder(
+                        animation: _controller,
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: 0.75 + (_controller.value * 0.2), // Expands by 20%
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 20,
+                                minHeight: 20,
+                              ),
+                              child: Text(
+                                notificationCount > 9 ? '9+' : notificationCount.toString(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                
+                
+                ],
+              );
+            },
+          ),
+        ],
       ),
       drawer: Drawer(
         child: ListView(
@@ -316,35 +435,40 @@ class _MainScaffoldState extends State<MainScaffold> {
         return Icons.dashboard;
       case 1:
         return Icons.add_link_outlined;
+      
       case 2:
-        return Icons.cloud_sync_sharp;
+        return Icons.swap_horiz;
+      
       case 3:
-        return Icons.webhook_sharp;
+        return Icons.battery_charging_full;
+      
       case 4:
-        return Icons.battery_4_bar_outlined;
+        return Icons.cloud_sync_sharp;
       case 5:
-        return Icons.poll_rounded;
+        return Icons.webhook_sharp;
       case 6:
-        return Icons.restaurant_menu_rounded;
+        return Icons.battery_4_bar_outlined;
       case 7:
-        return Icons.add_comment_sharp;
+        return Icons.poll_rounded;
       case 8:
-        return Icons.electric_bike;
+        return Icons.restaurant_menu_rounded;
       case 9:
-        return Icons.verified_user_rounded;
+        return Icons.add_comment_sharp;
       case 10:
-        return Icons.supervised_user_circle_rounded;
+        return Icons.electric_bike;
       case 11:
-        return Icons.how_to_vote_rounded;
+        return Icons.verified_user_rounded;
       case 12:
-        return Icons.medical_information_outlined;
+        return Icons.supervised_user_circle_rounded;
       case 13:
-        return Icons.timer;
+        return Icons.how_to_vote_rounded;
       case 14:
-        return Icons.bar_chart_rounded;
+        return Icons.medical_information_outlined;
       case 15:
-        return Icons.notifications;
+        return Icons.timer;
       case 16:
+        return Icons.bar_chart_rounded;
+      case 17:
         return Icons.settings;
       default:
         return Icons.circle;

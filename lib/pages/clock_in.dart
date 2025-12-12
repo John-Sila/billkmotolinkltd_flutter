@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:http/http.dart' as http;
 
 class ClockIn extends StatefulWidget {
   const ClockIn({super.key});
@@ -48,6 +49,8 @@ class _ClockInState extends State<ClockIn> {
   String userName = "";
   String _timeString = "";
   late Timer _timer;
+  bool? _isOnline;
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -62,7 +65,28 @@ class _ClockInState extends State<ClockIn> {
     });
 
     checkClockInStatus();
+    checkIsOnline();
   }
+
+  Future<void> checkIsOnline() async {
+    final online = await isOnline();
+    setState(() {
+      _isOnline = online;
+    });
+  }
+
+  Future<bool> isOnline() async {
+    try {
+      final response = await http.get(
+        Uri.parse("https://clients3.google.com/generate_204"),
+      ).timeout(const Duration(seconds: 3));
+
+      return response.statusCode == 204;
+    } catch (_) {
+      return false;
+    }
+  }
+
 
   void _updateTime() {
     final now = DateTime.now();
@@ -78,6 +102,7 @@ class _ClockInState extends State<ClockIn> {
     setState(() {
       isClockedIn = data['isClockedIn'] ?? false;
       userName = data['userName'] ?? "User";
+      isLoading = false;
     });
   }
 
@@ -88,10 +113,9 @@ class _ClockInState extends State<ClockIn> {
     super.dispose();
   }
 
-
-
   /// Fetch all bikes
   Future<Map<String, dynamic>> fetchBikes() async {
+    
     final doc = await FirebaseFirestore.instance
         .collection('general')
         .doc('general_variables')
@@ -156,6 +180,14 @@ class _ClockInState extends State<ClockIn> {
       final assignedRider = data['assignedRider']?.toString() ?? "None";
       final assignedBike = data['assignedBike']?.toString() ?? "None";
       final batteryName = data['batteryName'] ?? "Unknown Battery";
+
+      final isBooked = data['isBooked'] ?? false;
+      final bookedBy = data['bookedBy'] ?? "another rider.";
+
+      if (isBooked && bookedBy != userName) {
+        Fluttertoast.showToast(msg: "Battery is booked by ${bookedBy.toString()}");
+        return;
+      }
 
       if (assignedRider == "None" && assignedBike == "None") {
         Fluttertoast.showToast(msg: "Battery usable");
@@ -319,9 +351,25 @@ class _ClockInState extends State<ClockIn> {
     );
   }
   
+
+  String resolveClockInText({
+    required bool isOnline,
+    required bool isClockedIn,
+    required bool isLoading,
+    required bool isBlocked,
+  }) {
+    if (_isOnline == false) return "You are offline";
+    if (isClockedIn) return "You are clocked in already";
+    if (isLoading) return "Processing...";
+    if (isBlocked) return "Clock Out Disabled";
+
+    return "Clock In";
+  }
+
+
   @override
   Widget build(BuildContext context) {
-    if (isClockedIn == null) {
+    if (isClockedIn == null || isLoading) {
       // still fetching
       return const Center(child: CircularProgressIndicator());
     }
@@ -363,43 +411,70 @@ class _ClockInState extends State<ClockIn> {
                   const SizedBox(height: 28),
 
                   /// Bike dropdown
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedBike,
-                    decoration: InputDecoration(
-                      labelText: "Select Bike",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: DropdownButtonFormField<String>(
+                      value: selectedBike,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: "Select Bike",
+                        hintText: "Choose available bike",
+                        prefixIcon: Icon(Icons.two_wheeler_outlined, color: Colors.blue[600]),
+                        filled: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.blue[600]!, width: 2),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Colors.red, width: 1.5),
+                        ),
+                        labelStyle: TextStyle(color: Colors.grey[700]),
                       ),
-                    ),
-                    items: bikeNames.map((bikeName) {
-                      final bike = bikes[bikeName];
-                      final disabled = bike['isAssigned'] == true;
+                      items: bikeNames.map((bikeName) {
+                        final bike = bikes[bikeName];
+                        final disabled = bike['isAssigned'] == true;
 
-                      return DropdownMenuItem<String>(
-                        value: disabled ? null : bikeName,
-                        enabled: !disabled,
-                        child: Row(
-                          children: [
-                            Text(bikeName),
-                            if (disabled)
-                              const Padding(
-                                padding: EdgeInsets.only(left: 8),
-                                child: Text(
-                                  "(Assigned)",
-                                  style: TextStyle(
-                                    color: Colors.redAccent,
-                                    fontSize: 12,
-                                    fontStyle: FontStyle.italic,
+                        return DropdownMenuItem<String>(
+                          value: disabled ? null : bikeName,
+                          enabled: !disabled,
+                          child: Row(
+                            children: [
+                              Expanded(child: Text(bikeName)),
+                              if (disabled)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.redAccent.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Text(
+                                    "Assigned",
+                                    style: TextStyle(
+                                      color: Colors.redAccent,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      fontStyle: FontStyle.italic,
+                                    ),
                                   ),
                                 ),
-                              ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() => selectedBike = value);
-                    },
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() => selectedBike = value);
+                      },
+                    ),
                   ),
 
                   const SizedBox(height: 32),
@@ -461,23 +536,19 @@ class _ClockInState extends State<ClockIn> {
                     
                   const SizedBox(height: 20),
 
-                  // mileage
-                  TextFormField(
+                  _buildTextField(
+                    enabled: true,
                     controller: mileageController,
+                    label: 'Clock-In Mileage',
+                    hint: '',
+                    onChanged: (_) => setState(() {}),
                     keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: "Mileage",
-                      hintText: "Enter mileage (km)",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                    icon: Icons.history,
+                    validator: (v) => v == null || v.isEmpty 
+                        ? 'Enter mileage' 
+                        : null,
                   ),
-
-
-
-
-
+                  const SizedBox(height: 20),
 
                   // clock in button
                   const SizedBox(height: 24),
@@ -505,7 +576,12 @@ class _ClockInState extends State<ClockIn> {
                             ),
                           )
                         : Text(
-                            (isClockedIn ?? false) ? "You are clocked in, ${userName.split(" ")[1]}" : "Clock In",
+                            resolveClockInText(
+                              isOnline: (_isOnline == true) ? true : false,
+                              isClockedIn: isClockedIn == true,
+                              isLoading: isLoading,
+                              isBlocked: false,
+                            ),
                             style: const TextStyle(fontSize: 18, color: Colors.white),
                           ),
                   ),
@@ -562,4 +638,95 @@ class _QRScannerPageState extends State<_QRScannerPage> {
       ),
     );
   }
+}
+
+
+Widget _buildTextField({
+  required bool enabled,
+  required TextEditingController controller,
+  required String label,
+  required String hint,
+  void Function(String)? onChanged,
+  required IconData icon,
+  TextInputType? keyboardType,
+  bool obscureText = false,
+  String? Function(String?)? validator,
+}) {
+  return TextFormField(
+    enabled: enabled,
+    controller: controller,
+    keyboardType: keyboardType,
+    obscureText: obscureText,
+    onChanged: onChanged,
+    validator: validator,
+    decoration: InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: Icon(icon, color: Colors.blue[600]),
+      filled: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.grey[300]!),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.grey[300]!),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.blue[600]!, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Colors.red, width: 1.5),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Colors.red, width: 2),
+      ),
+      labelStyle: TextStyle(color: Colors.grey[700]),
+    ),
+  );
+}
+
+
+Widget _buildDropdownField<T>({
+  required T? value,
+  required String label,
+  required String hint,
+  required IconData icon,
+  required List<DropdownMenuItem<T>> items,
+  required ValueChanged<T?>? onChanged,
+  String? Function(T?)? validator,
+}) {
+  return DropdownButtonFormField<T>(
+    value: value,
+    items: items,
+    onChanged: onChanged,
+    validator: validator,
+    decoration: InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: Icon(icon, color: Colors.blue[600]),
+      filled: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.grey[300]!),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.grey[300]!),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.blue[600]!, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Colors.red, width: 1.5),
+      ),
+    ),
+  );
 }

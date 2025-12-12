@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
 
 class ClockOut extends StatefulWidget {
   const ClockOut({super.key});
@@ -35,6 +36,8 @@ class _ClockOutState extends State<ClockOut> {
   bool isClockedIn = false;
   bool hasClockedOutToday = false;
   bool isClockingOut = false;
+  bool? _isOnline;
+
 
 
   double deviation = 0.0;
@@ -63,6 +66,7 @@ class _ClockOutState extends State<ClockOut> {
   void initState() {
     super.initState();
     fetchInitialData();
+    checkIsOnline();
 
     // Initialize expense controllers
     expensesChecked.forEach((key, value) {
@@ -321,11 +325,11 @@ class _ClockOutState extends State<ClockOut> {
 
 
       // --- NET INCOME CALC ---
-      final gross = double.parse(grossIncomeController.text);
+      final gross = double.parse(double.parse(grossIncomeController.text).toStringAsFixed(2));
       final commission = commissionPercentage; // already fetched on load
-      final netIncome = gross * (1 - commission)
+      final netIncome = double.parse((gross * (1 - commission)
           - (todaysIAB - prevInApp)
-          - expenseData.values.whereType<num>().fold(0.0, (s, v) => s + v);
+          - expenseData.values.whereType<num>().fold(0.0, (s, v) => s + v)).toStringAsFixed(2));
 
       // --- DATE KEYS ---
       final dateKey = todayHumanKey();                   // e.g. 06 Dec 2025
@@ -384,8 +388,8 @@ class _ClockOutState extends State<ClockOut> {
       // -----------------------------------------------------------------------
       final clockoutData = {
         "grossIncome": gross,
-        "todaysInAppBalance": todaysIAB,
-        "previousInAppBalance": prevInApp,
+        "todaysInAppBalance": double.parse(todaysIAB.toStringAsFixed(2)),
+        "previousInAppBalance": double.parse((prevInApp).toStringAsFixed(2)),
         "inAppDifference": todaysIAB - prevInApp,
         "expenses": expenseData,
         "netIncome": netIncome,
@@ -403,7 +407,7 @@ class _ClockOutState extends State<ClockOut> {
         "currentInAppBalance": todaysIAB,
         "isClockedIn": false,
         "netClockedLastly": netIncome,
-        "pendingAmount": pendingAmountOld + netIncome,
+        "pendingAmount": double.parse((pendingAmountOld + netIncome).toStringAsFixed(2)),
         "lastClockDate": now,
         "currentBike": "None",
       });
@@ -480,24 +484,53 @@ class _ClockOutState extends State<ClockOut> {
     }
   }
 
+  String resolveClockoutText({
+    required bool isClockedIn,
+    required bool isLoading,
+    required bool isOnline,
+    required bool isBlocked,
+    required bool hasClockedOutToday,
+  }) {
+    if (_isOnline == false) return "You are offline";
+    if (!isClockedIn) return "You are not clocked in";
+    if (hasClockedOutToday) return "You are clocked out";
+    if (isLoading) return "Processing...";
+    if (isBlocked) return "Clock Out Disabled";
+
+    return "Clock Out";
+  }
+
+  Future<void> checkIsOnline() async {
+    final online = await isOnline();
+    setState(() {
+      _isOnline = online;
+    });
+  }
+
+  Future<bool> isOnline() async {
+    try {
+      final response = await http.get(
+        Uri.parse("https://clients3.google.com/generate_204"),
+      ).timeout(const Duration(seconds: 3));
+
+      return response.statusCode == 204;
+    } catch (_) {
+      return false;
+    }
+  }
+
+
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    // if (!isClockedIn) {
-    //   return const Center(
-    //     child: Text(
-    //       "You must clock in first.",
-    //       style: TextStyle(fontSize: 18),
-    //     ),
-    //   );
-    // }
-
 
     return RefreshIndicator(
       onRefresh: () async {
         await fetchInitialData();
+        await checkIsOnline();
       },
       child:Scaffold(
         body: SafeArea(
@@ -528,48 +561,72 @@ class _ClockOutState extends State<ClockOut> {
 
                 const SizedBox(height: 16),
 
-                // Gross Income
-                TextFormField(
+                // gross
+                _buildTextField(
+                  enabled: true,
                   controller: grossIncomeController,
+                  label: 'Gross Income',
+                  onChanged: (_) => setState(() {}),
+                  hint: 'Enter gross income',
+                  icon: Icons.monetization_on,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: "Gross Income",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Commission (uneditable)
-                TextFormField(
-                  enabled: false,
-                  decoration: InputDecoration(
-                    labelText: "${(commissionPercentage * 100).toStringAsFixed(0)}% Commission",
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Today's IAB
-                TextFormField(
-                  controller: todaysIABController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: "Today's IAB",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Previous IAB (uneditable)
-                TextFormField(
-                  controller: prevIABController,
-                  enabled: false,
-                  decoration: const InputDecoration(
-                    labelText: "Previous IAB",
-                    border: OutlineInputBorder(),
-                  ),
+                  validator: (v) => v == null || v.isEmpty 
+                      ? 'Gross income is required' 
+                      : null,
                 ),
                 const SizedBox(height: 20),
+
+
+                // Commission (uneditable)
+                _buildTextField(
+                  enabled: false,
+                  controller: TextEditingController(
+                    text: (commissionPercentage * 100).toStringAsFixed(0),
+                  ),
+                  label: '${(commissionPercentage * 100).toStringAsFixed(0)}% Commission',
+                  hint: '',
+                  onChanged: (_) => setState(() {}),
+                  keyboardType: TextInputType.number,
+                  icon: Icons.percent,
+                  validator: (v) => v == null || v.isEmpty 
+                      ? 'Auto-filled' 
+                      : null,
+                ),
+                const SizedBox(height: 20),
+
+                // Today's IAB
+                _buildTextField(
+                  enabled: true,
+                  controller: todaysIABController,
+                  label: 'Today\'s In-App Balance',
+                  hint: 'Enter today\'s IAB',
+                  onChanged: (_) => setState(() {}),
+                  keyboardType: TextInputType.number,
+                  icon: Icons.account_balance_wallet,
+                  validator: (v) => v == null || v.isEmpty 
+                      ? 'In-app balance is required' 
+                      : null,
+                ),
+                const SizedBox(height: 20),
+
+                // Previous IAB (uneditable)
+                _buildTextField(
+                  enabled: false,
+                  controller: prevIABController,
+                  label: 'Previous IAB',
+                  onChanged: (_) => setState(() {}),
+                  keyboardType: TextInputType.number,
+                  hint: 'Enter previous IAB',
+                  icon: Icons.history,
+                  validator: (v) => v == null || v.isEmpty 
+                      ? 'Auto-filled' 
+                      : null,
+                ),
+                const SizedBox(height: 20),
+
+
+
+
 
                 const Text("Expenses", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
@@ -592,17 +649,79 @@ class _ClockOutState extends State<ClockOut> {
                         ),
                         Text(key),
                         const SizedBox(width: 8),
+
+
                         Expanded(
-                          child: TextField(
-                            controller: expenseControllers[key],
-                            enabled: expensesChecked[key],
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              hintText: "Amount",
-                              border: OutlineInputBorder(),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: TextField(
+                              controller: expenseControllers[key],
+                              enabled: expensesChecked[key],
+                              keyboardType: TextInputType.number,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: "Enter amount",
+                                hintStyle: TextStyle(
+                                  fontSize: 16,
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.attach_money_outlined,
+                                  color: expensesChecked[key] ?? false ? Colors.blue[600]! : Colors.grey[400]!,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 20,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: expensesChecked[key] ?? false ? Colors.grey[300]! : Colors.grey[400]!,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: expensesChecked[key] ?? false ? Colors.grey[300]! : Colors.grey[400]!,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(
+                                    color: Colors.blue,
+                                    width: 2,
+                                  ),
+                                ),
+                                disabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey[400]!,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                filled: true,
+                                fillColor: Colors.transparent,
+                              ),
                             ),
                           ),
                         ),
+
+
+
+
+
+                        
                       ],
                     ),
                   );
@@ -611,12 +730,61 @@ class _ClockOutState extends State<ClockOut> {
                 // Other description
                 if (expensesChecked['Other']!)
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
                     child: TextField(
                       controller: otherExpenseController,
-                      decoration: const InputDecoration(
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
+                      ),
+                      
+                      onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
                         labelText: "Other Expense Description",
-                        border: OutlineInputBorder(),
+                        hintText: "Enter description...",
+                        labelStyle: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[700],
+                        ),
+                        hintStyle: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[500],
+                        ),
+                        prefixIcon: Icon(
+                          Icons.description_outlined,
+                          color: Colors.blue[600],
+                          size: 24,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 20,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: Colors.blue[600]!,
+                            width: 2,
+                          ),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(
+                            color: Colors.red,
+                            width: 1.5,
+                          ),
+                        ),
+                        filled: true,
+                        fillColor: Colors.transparent,  // No fixed background
                       ),
                     ),
                   ),
@@ -624,47 +792,43 @@ class _ClockOutState extends State<ClockOut> {
                 const SizedBox(height: 12),
 
                 // Clock-In Mileage (uneditable)
-                TextFormField(
-                  controller: clockInMileageController,
+                _buildTextField(
                   enabled: false,
-                  decoration: const InputDecoration(
-                    labelText: "Clock-In Mileage",
-                    border: OutlineInputBorder(),
-                  ),
+                  controller: clockInMileageController,
+                  label: 'Clock-In Mileage',
+                  hint: '',
+                  onChanged: (_) => setState(() {}),
+                  keyboardType: TextInputType.number,
+                  icon: Icons.history,
+                  validator: (v) => v == null || v.isEmpty 
+                      ? 'Auto-filled' 
+                      : null,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 20),
 
                 // Clock-Out Mileage
-                TextFormField(
+                _buildTextField(
+                  enabled: true,
                   controller: clockOutMileageController,
+                  label: 'Clock-Out Mileage',
+                  hint: 'Enter clock-out mileage',
+                  icon: Icons.directions_bike,
+                  onChanged: (_) => setState(() {}),
                   keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: "Clock-Out Mileage",
-                    border: OutlineInputBorder(),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: (_clockOutMileageValid()) ? Colors.grey : Colors.red,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: (_clockOutMileageValid()) ? Colors.blue : Colors.red,
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                  onChanged: (_) => setState(() {}), // rebuilds to update button state and border
+                  validator: (v) => v == null || v.isEmpty 
+                      ? 'Mileage is required' 
+                      : null,
                 ),
+                const SizedBox(height: 20),
 
-                const SizedBox(height: 12),
+
 
                 // Location dropdown
-                DropdownButtonFormField<String>(
-                  initialValue: selectedDestination,
-                  decoration: const InputDecoration(
-                    labelText: "Select Location",
-                    border: OutlineInputBorder(),
-                  ),
+                _buildDropdownField<String>(
+                  value: selectedDestination,
+                  label: 'Select Location',
+                  hint: 'Choose destination',
+                  icon: Icons.location_on_outlined,
                   items: destinations.map((loc) {
                     return DropdownMenuItem(value: loc, child: Text(loc));
                   }).toList(),
@@ -673,6 +837,7 @@ class _ClockOutState extends State<ClockOut> {
                   },
                 ),
                 const SizedBox(height: 20),
+
 
                 // Net Income
                 Text(
@@ -685,7 +850,7 @@ class _ClockOutState extends State<ClockOut> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: (!hasClockedOutToday && canClockOut && !isClockingOut && _clockOutMileageValid() && isClockedIn)
+                    onPressed: (!hasClockedOutToday && canClockOut && !isClockingOut && _clockOutMileageValid() && isClockedIn && (_isOnline == true))
                         ? showClockOutConfirmationDialog
                         : null,
                     style: ElevatedButton.styleFrom(
@@ -705,9 +870,16 @@ class _ClockOutState extends State<ClockOut> {
                             ),
                           )
                         : Text(
-                            hasClockedOutToday ? "You are clocked out" : "Clock Out",
+                            resolveClockoutText(
+                              isClockedIn: isClockedIn,
+                              hasClockedOutToday: hasClockedOutToday,
+                              isLoading: isLoading,
+                              isBlocked: false,
+                              isOnline: (_isOnline == true) ? true : false,
+                            ),
                             style: const TextStyle(fontSize: 18, color: Colors.white),
                           ),
+
                   ),
                 )
 
@@ -721,3 +893,95 @@ class _ClockOutState extends State<ClockOut> {
       );
   }
 }
+
+
+Widget _buildTextField({
+  required bool enabled,
+  required TextEditingController controller,
+  required String label,
+  required String hint,
+  void Function(String)? onChanged,
+  required IconData icon,
+  TextInputType? keyboardType,
+  bool obscureText = false,
+  String? Function(String?)? validator,
+}) {
+  return TextFormField(
+    enabled: enabled,
+    controller: controller,
+    keyboardType: keyboardType,
+    obscureText: obscureText,
+    onChanged: onChanged,
+    validator: validator,
+    decoration: InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: Icon(icon, color: Colors.blue[600]),
+      filled: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.grey[300]!),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.grey[300]!),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.blue[600]!, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Colors.red, width: 1.5),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Colors.red, width: 2),
+      ),
+      labelStyle: TextStyle(color: Colors.grey[700]),
+    ),
+  );
+}
+
+
+Widget _buildDropdownField<T>({
+  required T? value,
+  required String label,
+  required String hint,
+  required IconData icon,
+  required List<DropdownMenuItem<T>> items,
+  required ValueChanged<T?>? onChanged,
+  String? Function(T?)? validator,
+}) {
+  return DropdownButtonFormField<T>(
+    value: value,
+    items: items,
+    onChanged: onChanged,
+    validator: validator,
+    decoration: InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: Icon(icon, color: Colors.blue[600]),
+      filled: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.grey[300]!),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.grey[300]!),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.blue[600]!, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: Colors.red, width: 1.5),
+      ),
+    ),
+  );
+}
+
