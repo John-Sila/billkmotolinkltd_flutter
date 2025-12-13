@@ -293,11 +293,28 @@ class _ClockInState extends State<ClockIn> {
       setState(() {
         isClockedIn = true;
       });
+      await _postClockInNotification(userName);
       // Clear scans after clock-in
       resetScans();
       mileageController.clear();
     } catch (e) {
       Fluttertoast.showToast(msg: "Error clocking in: ${e.toString()}");
+    }
+  }
+
+  Future<void> _postClockInNotification(String userName) async {
+    try {
+      final now = Timestamp.now();
+      final notifRef = FirebaseFirestore.instance.collection('notifications').doc('latest');
+
+      await notifRef.set({
+        'body': "$userName just clocked in.",
+        'targetRoles': ["Admin", "CEO", "Systems, IT"],
+        'timestamp': now,
+        'title': "Clockins",
+      });
+    } catch (e) {
+      debugPrint("Error posting clock-in notification: $e");
     }
   }
 
@@ -414,7 +431,7 @@ class _ClockInState extends State<ClockIn> {
                   SizedBox(
                     width: double.infinity,
                     child: DropdownButtonFormField<String>(
-                      value: selectedBike,
+                      initialValue: selectedBike,
                       isExpanded: true,
                       decoration: InputDecoration(
                         labelText: "Select Bike",
@@ -454,7 +471,7 @@ class _ClockInState extends State<ClockIn> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: Colors.redAccent.withOpacity(0.1),
+                                    color: Colors.redAccent.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: const Text(

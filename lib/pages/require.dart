@@ -187,7 +187,7 @@ class _RequirementsState extends State<Requirements> {
                 child: _buildDropdownField<String>(
                   value: selectedUserId,
                   label: 'Select User',
-                  hint: 'Choose admin or rider',
+                  hint: 'Choose rider',
                   icon: Icons.person_outline,
                   items: users.map<DropdownMenuItem<String>>((user) {
                     final rank = user['userRank']?.toString() ?? '';

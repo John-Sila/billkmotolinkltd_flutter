@@ -307,6 +307,17 @@ class _ClockOutState extends State<ClockOut> {
       final todaysIAB = double.parse(todaysIABController.text);
       final clockinMileage = userSnap.get('clockinMileage');
       final selectedLoc = selectedDestination;
+      if (double.parse(clockOutMileageController.text) < clockinMileage) {
+        Fluttertoast.showToast(
+          msg: "Clockout mileage too low",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
+        return;
+      }
       // userSnap.get('currentBike');
 
       // --- EXPENSE MAP ---
@@ -462,7 +473,10 @@ class _ClockOutState extends State<ClockOut> {
 
 
       Fluttertoast.showToast(msg: "Clocked out successfully");
+      await _postClockOutNotification(userName);
     } catch (e) {
+      if (!mounted) return;
+      
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -483,6 +497,23 @@ class _ClockOutState extends State<ClockOut> {
       );
     }
   }
+
+  Future<void> _postClockOutNotification(String userName) async {
+    try {
+      final now = Timestamp.now();
+      final notifRef = FirebaseFirestore.instance.collection('notifications').doc('latest');
+
+      await notifRef.set({
+        'body': "$userName just clocked out.",
+        'targetRoles': ["Admin", "CEO", "Systems, IT"],
+        'timestamp': now,
+        'title': "Clockouts",
+      });
+    } catch (e) {
+      debugPrint("Error posting clock-out notification: $e");
+    }
+  }
+
 
   String resolveClockoutText({
     required bool isClockedIn,

@@ -23,7 +23,6 @@ import 'pages/asset_manager.dart';
 import 'pages/user_manager.dart';
 import 'pages/profiles.dart';
 import 'pages/create_a_poll.dart';
-import 'pages/create_a_memo.dart';
 import 'pages/activity_scheduler.dart';
 import 'pages/reports.dart';
 import 'pages/app_notifications.dart';
@@ -65,6 +64,7 @@ class _BillkMotolinkAppState extends State<BillkMotolinkApp> {
       _themeMode = isDarkMode ? ThemeMode.dark : ThemeMode.light;
     });
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -176,17 +176,12 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
     CreateBudget(),
     Requirements(),
     AssetManager(),
-
-
-    UserManager(
-      
-    ),
+    UserManager(),
 
 
 
     Profiles(),
     CreatePoll(),
-    CreateMemo(),
     ActivityScheduler(),
     Reports(),
     UserSettings()
@@ -207,7 +202,6 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
     'User Manager',
     'Profiles',
     'Create a Poll',
-    'Create a Memo',
     'Activity Scheduler',
     'Reports',
     'Settings',
@@ -264,40 +258,295 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
     super.dispose();
   }
 
-  Widget _buildDrawerItem({
+
+
+
+  // 1. Gradient for header (Light/Dark variants)
+  List<Color> _getDrawerGradient(ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+    return isDark
+        ? [
+            Colors.teal.shade900,
+            Colors.teal.shade800,
+            Colors.teal.shade700,
+          ]
+        : [
+            Colors.teal,
+            Colors.teal.shade400,
+            Colors.teal.shade600,
+          ];
+  }
+
+  // 2. Content background color
+  Color _getDrawerContentBg(ThemeData theme) {
+    return theme.brightness == Brightness.dark
+        ? Colors.grey.shade900
+        : Colors.white;
+  }
+
+// 3. Beautiful adaptive header
+Widget _buildDrawerHeader(BuildContext context) {
+  final theme = Theme.of(context);
+  final isDark = theme.brightness == Brightness.dark;
+  
+  return Container(
+    padding: const EdgeInsets.fromLTRB(24, 40, 24, 32),
+    child: Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isDark
+                  ? [Colors.white.withValues(alpha: 0.3), Colors.white.withValues(alpha: 0.1)]
+                  : [Colors.black.withValues(alpha: 0.1), Colors.black.withValues(alpha: 0.05)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.2),
+              width: 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: (isDark ? Colors.black : Colors.black.withValues(alpha: 0.3)).withValues(alpha: 0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Icon(
+            Icons.two_wheeler,
+            size: 48,
+            color: isDark ? Colors.white : Colors.teal.shade700,
+          ),
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          'BILLK MOTOLINK LTD',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Redefining Urban Mobility',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withValues(alpha: 0.2) : Colors.teal.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.3) : Colors.teal.withValues(alpha: 0.2),
+            ),
+          ),
+          child: Text(
+            'billkmotolinkltd.netlify.app',
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Colors.white : Colors.teal.shade700,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+  // 4. Adaptive drawer items
+  Widget _buildModernDrawerItem({
+    required BuildContext context,
     required int index,
     required IconData icon,
     required String title,
+    required bool isSelected,
   }) {
-    final bool isSelected = _selectedIndex == index;
     final theme = Theme.of(context);
-    final bool isDark = theme.brightness == Brightness.dark;
-
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Container(
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: isSelected
-            ? (isDark ? Colors.teal.withOpacity(0.25) : Colors.teal.withOpacity(0.15))
+        color: isSelected 
+            ? (isDark ? Colors.teal.withValues(alpha: 0.3) : Colors.teal.withValues(alpha: 0.12))
             : Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
         border: isSelected
-            ? const Border(left: BorderSide(color: Colors.teal, width: 4.0))
+            ? Border.all(
+                color: Colors.teal.withValues(alpha: isDark ? 0.5 : 0.3),
+                width: 1.5,
+              )
+            : null,
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color: Colors.teal.withValues(alpha: isDark ? 0.4 : 0.2),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ]
             : null,
       ),
       child: ListTile(
-        leading: Icon(icon, color: isSelected ? Colors.teal : theme.iconTheme.color),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+        leading: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            gradient: isSelected
+                ? LinearGradient(colors: [Colors.teal.shade500, Colors.teal.shade700])
+                : LinearGradient(
+                    colors: isDark
+                        ? [Colors.white.withValues(alpha: 0.2), Colors.transparent]
+                        : [Colors.grey.withValues(alpha: 0.2), Colors.transparent],
+                  ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Icon(
+            icon,
+            color: isSelected 
+                ? Colors.white 
+                : (isDark ? Colors.white70 : Colors.grey[700]),
+            size: 22,
+          ),
+        ),
         title: Text(
           title,
           style: TextStyle(
-            color: isSelected ? Colors.teal : theme.textTheme.bodyMedium?.color,
-            fontWeight: isSelected ? FontWeight.w900 : FontWeight.w500,
+            fontSize: 16,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+            color: isSelected 
+                ? Colors.teal.shade900 
+                : (isDark ? Colors.white : Colors.grey[800]),
           ),
         ),
         trailing: isSelected
-            ? const Icon(Icons.arrow_forward_ios, color: Colors.teal, size: 16)
+            ? Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [Colors.teal.shade500, Colors.teal]),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.arrow_forward_ios,
+                  color: Colors.white,
+                  size: 14,
+                ),
+              )
             : null,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         onTap: () => _onItemTapped(index),
+        hoverColor: Colors.teal.withValues(alpha: isDark ? 0.2 : 0.08),
       ),
     );
   }
+
+  // 5. Adaptive bottom section
+  Widget _buildBottomActions(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      decoration: BoxDecoration(
+        color: _getDrawerContentBg(theme),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (isDark ? Colors.black : Colors.black.withValues(alpha: 0.1)).withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          SwitchListTile(
+            secondary: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.teal.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.teal.withValues(alpha: 0.3)),
+              ),
+              child: Icon(Icons.brightness_6, color: Colors.teal, size: 22),
+            ),
+            title: Text(
+              'Dark Mode',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white : Colors.grey[800],
+              ),
+            ),
+            value: _isDarkMode,
+            onChanged: (value) async {
+              await widget.onThemeChanged(value);
+              setState(() => _isDarkMode = value);
+            },
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark 
+                    ? [Colors.red.shade700, Colors.red.shade500]
+                    : [Colors.red, Colors.redAccent],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.red.withValues(alpha: 0.4),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: _logout,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.logout, color: Colors.white, size: 20),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Logout',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -382,49 +631,67 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
           ),
         ],
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
+
+
+  drawer: Drawer(
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    child: Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: _getDrawerGradient(Theme.of(context)),
+          stops: const [0.0, 0.5, 1.0],
+        ),
+      ),
+      child: SafeArea(
+        child: Column(
           children: [
-            const UserAccountsDrawerHeader(
-              decoration: BoxDecoration(color: Colors.teal),
-              accountName: Text(
-                'BILLK MOTOLINK LTD',
-                style: TextStyle(fontWeight: FontWeight.w900),
-              ),
-              accountEmail: Text('https://billkmotolinkltd.netlify.app'),
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Text('B', style: TextStyle(fontSize: 30, color: Colors.teal)),
+            // Adaptive Header
+            _buildDrawerHeader(context),
+            
+            // Menu Items Container
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: _getDrawerContentBg(Theme.of(context)),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(32),
+                    topRight: Radius.circular(32),
+                  ),
+                ),
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+                  itemCount: _titles.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 2),
+                  itemBuilder: (context, index) {
+                    final isSelected = _selectedIndex == index;
+                    return _buildModernDrawerItem(
+                      context: context,
+                      index: index,
+                      icon: _getDrawerIcon(index),
+                      title: _titles[index],
+                      isSelected: isSelected,
+                    );
+                  },
+                ),
               ),
             ),
-            for (int i = 0; i < _titles.length; i++)
-              _buildDrawerItem(
-                index: i,
-                icon: _getDrawerIcon(i),
-                title: _titles[i],
-              ),
-            const Divider(),
-            SwitchListTile(
-              secondary: const Icon(Icons.brightness_6, color: Colors.teal),
-              title: const Text('Dark Mode'),
-              value: _isDarkMode,
-              onChanged: (value) async {
-                await widget.onThemeChanged(value);
-                setState(() => _isDarkMode = value);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text(
-                'Logout',
-                style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500),
-              ),
-              onTap: _logout,
-            ),
+            
+            // Adaptive Bottom Actions
+            _buildBottomActions(context),
           ],
         ),
       ),
+    ),
+  ),
+
+      
+      
+
+
+
       body: _pages[_selectedIndex],
     );
   }
@@ -463,12 +730,10 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
       case 13:
         return Icons.how_to_vote_rounded;
       case 14:
-        return Icons.medical_information_outlined;
-      case 15:
         return Icons.timer;
-      case 16:
+      case 15:
         return Icons.bar_chart_rounded;
-      case 17:
+      case 16:
         return Icons.settings;
       default:
         return Icons.circle;
