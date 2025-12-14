@@ -150,7 +150,14 @@ class _ClockInState extends State<ClockIn> {
       );
 
       if (qrCodeRaw == null) {
-        Fluttertoast.showToast(msg: "Scan cancelled");
+        Fluttertoast.showToast(
+          msg: "Scan cancelled",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
         setState(() => scanning = false);
         return;
       }
@@ -159,7 +166,14 @@ class _ClockInState extends State<ClockIn> {
 
       // Prevent duplicate scans
       if (scannedBatteryCodes.contains(qrCode)) {
-        Fluttertoast.showToast(msg: "Battery already scanned");
+        Fluttertoast.showToast(
+          msg: "Battery already scanned ",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
         setState(() => scanning = false);
         return;
       }
@@ -171,7 +185,14 @@ class _ClockInState extends State<ClockIn> {
           .get();
 
       if (query.docs.isEmpty) {
-        Fluttertoast.showToast(msg: "Battery not found");
+        Fluttertoast.showToast(
+          msg: "Battery not found",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
         setState(() => scanning = false);
         return;
       }
@@ -185,12 +206,26 @@ class _ClockInState extends State<ClockIn> {
       final bookedBy = data['bookedBy'] ?? "another rider.";
 
       if (isBooked && bookedBy != userName) {
-        Fluttertoast.showToast(msg: "Battery is booked by ${bookedBy.toString()}");
+        Fluttertoast.showToast(
+          msg: "Battery is booked by ${bookedBy.toString()}",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
         return;
       }
 
       if (assignedRider == "None" && assignedBike == "None") {
-        Fluttertoast.showToast(msg: "Battery usable");
+        Fluttertoast.showToast(
+          msg: "Battery usable",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
 
         setState(() {
           scannedBatteries.add(batteryName);
@@ -198,7 +233,14 @@ class _ClockInState extends State<ClockIn> {
           scanning = false;
         });
       } else {
-        Fluttertoast.showToast(msg: "Battery unavailable");
+        Fluttertoast.showToast(
+          msg: "Battery unavailable for loading",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
         setState(() => scanning = false);
       }
     } catch (e) {
@@ -228,12 +270,21 @@ class _ClockInState extends State<ClockIn> {
       // Step 1: Update user document
       final userSnapshot = await userDocRef.get();
       final userName = userSnapshot.data()?['userName'] ?? "Unknown";
+      final notificationId =
+        DateTime.now().millisecondsSinceEpoch.toString();
+        
 
       await userDocRef.update({
         'currentBike': selectedBike,
         'clockInTime': now,
         'clockinMileage': mileage,
         'isClockedIn': true,
+        'notifications.$notificationId': {
+          'isRead': false,
+          'message': 'You\'re now clocked in.',
+          'time': now,
+        },
+        "numberOfNotifications": FieldValue.increment(1),
       });
 
       // Step 2: Update each scanned battery
@@ -285,10 +336,14 @@ class _ClockInState extends State<ClockIn> {
 
 
       await generalRef.update({'bikes': bikes});
-
       Fluttertoast.showToast(
-          msg:
-              "Clocked in successfully with bike: $selectedBike, batteries: ${scannedBatteries.join(', ')}");
+        msg: "Clocked in successfully with bike: $selectedBike, batteries: ${scannedBatteries.join(', ')}",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.orange,
+        textColor: Colors.white,
+        fontSize: 16.0,
+      );
 
       setState(() {
         isClockedIn = true;
@@ -309,7 +364,7 @@ class _ClockInState extends State<ClockIn> {
 
       await notifRef.set({
         'body': "$userName just clocked in.",
-        'targetRoles': ["Admin", "CEO", "Systems, IT"],
+        'targetRoles': ["Manager", "CEO", "Systems, IT"],
         'timestamp': now,
         'title': "Clockins",
       });
@@ -326,7 +381,14 @@ class _ClockInState extends State<ClockIn> {
       selectedBike = null;  // ADD THIS LINE
       scanning = false;
     });
-    Fluttertoast.showToast(msg: "Scan list reset");
+    Fluttertoast.showToast(
+      msg: "Scans reset",
+      toastLength: Toast.LENGTH_LONG,
+      gravity: ToastGravity.BOTTOM,
+      backgroundColor: Colors.red,
+      textColor: Colors.white,
+      fontSize: 16.0,
+    );
   }
 
   void showClockInConfirmationDialog() {
@@ -703,47 +765,6 @@ Widget _buildTextField({
         borderSide: const BorderSide(color: Colors.red, width: 2),
       ),
       labelStyle: TextStyle(color: Colors.grey[700]),
-    ),
-  );
-}
-
-
-Widget _buildDropdownField<T>({
-  required T? value,
-  required String label,
-  required String hint,
-  required IconData icon,
-  required List<DropdownMenuItem<T>> items,
-  required ValueChanged<T?>? onChanged,
-  String? Function(T?)? validator,
-}) {
-  return DropdownButtonFormField<T>(
-    value: value,
-    items: items,
-    onChanged: onChanged,
-    validator: validator,
-    decoration: InputDecoration(
-      labelText: label,
-      hintText: hint,
-      prefixIcon: Icon(icon, color: Colors.blue[600]),
-      filled: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.grey[300]!),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.grey[300]!),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.blue[600]!, width: 2),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Colors.red, width: 1.5),
-      ),
     ),
   );
 }

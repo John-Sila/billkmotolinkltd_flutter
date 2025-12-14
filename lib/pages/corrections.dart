@@ -392,7 +392,14 @@ class _Correctionstate extends State<Corrections> {
         });
       });
 
-      Fluttertoast.showToast(msg: "Correction completed successfully");
+      Fluttertoast.showToast(
+          msg: "Correction successful!",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.green,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
       await deleteThisRequirement(uid: uid, targetDate: ourDate, );
     } catch (e) {
       showDialog(
@@ -453,7 +460,14 @@ class _Correctionstate extends State<Corrections> {
       'requirements.$timestampKeyToDelete': FieldValue.delete(),
     });
 
-    Fluttertoast.showToast(msg: 'Deleted requirement for $targetDate');
+    Fluttertoast.showToast(
+      msg: "Deleted requirement for $targetDate",
+      toastLength: Toast.LENGTH_LONG,
+      gravity: ToastGravity.BOTTOM,
+      backgroundColor: Colors.orange,
+      textColor: Colors.white,
+      fontSize: 16.0,
+    );
     grossIncomeController.clear();
     todaysIABController.clear();
     await fetchInitialData(); // refresh UI
@@ -625,7 +639,7 @@ class _Correctionstate extends State<Corrections> {
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.08),
+                                  color: Colors.black.withValues(alpha: 0.08),
                                   blurRadius: 12,
                                   offset: const Offset(0, 4),
                                 ),
@@ -807,7 +821,7 @@ Widget _buildDropdownField<T>({
   String? Function(T?)? validator,
 }) {
   return DropdownButtonFormField<T>(
-    value: value,
+    initialValue: value,
     items: items,
     onChanged: onChanged,
     validator: validator,

@@ -269,7 +269,7 @@ class _ProfilesState extends State<Profiles> {
     return Card(
       margin: const EdgeInsets.only(bottom: 20),
       elevation: 8,
-      shadowColor: theme.colorScheme.primary.withOpacity(0.3),
+      shadowColor: theme.colorScheme.primary.withValues(alpha: 0.3),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       color: surfaceColor,
       child: Container(
@@ -280,7 +280,7 @@ class _ProfilesState extends State<Profiles> {
             end: Alignment.bottomRight,
             colors: [
               surfaceColor,
-              theme.colorScheme.surfaceVariant ?? surfaceColor,
+              theme.colorScheme.surfaceContainerHighest,
             ],
           ),
         ),
@@ -295,7 +295,7 @@ class _ProfilesState extends State<Profiles> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.1),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(Icons.person, 
@@ -490,10 +490,10 @@ class _EditableNumberField extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceVariant?.withOpacity(0.5),
+          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: theme.colorScheme.outlineVariant ?? Colors.transparent,
+            color: theme.colorScheme.outlineVariant,
             width: 1,
           ),
         ),
@@ -502,7 +502,7 @@ class _EditableNumberField extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: color, size: 20),
@@ -600,20 +600,19 @@ class _EditableBoolField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = value ? color : theme.colorScheme.onSurfaceVariant;
     return GestureDetector(
       onTap: () => onUpdate(!value),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: value 
-            ? color.withOpacity(0.1) 
-            : theme.colorScheme.surfaceVariant?.withOpacity(0.5),
+            ? color.withValues(alpha: 0.1) 
+            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: value 
-              ? color.withOpacity(0.3) 
-              : theme.colorScheme.outlineVariant ?? Colors.transparent,
+              ? color.withValues(alpha: 0.3) 
+              : theme.colorScheme.outlineVariant,
           ),
         ),
         child: Row(
@@ -621,7 +620,7 @@ class _EditableBoolField extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withOpacity(value ? 0.2 : 0.1),
+                color: color.withValues(alpha: value ? 0.2 : 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: color, size: 20),

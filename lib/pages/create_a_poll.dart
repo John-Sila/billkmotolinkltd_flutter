@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
 
 class CreatePoll extends StatefulWidget {
@@ -90,23 +91,38 @@ class _CreatePollState extends State<CreatePoll> {
   void _submitPoll() async {
     // Validation (same as before)
     if (_titleController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a title')),
-      );
+      Fluttertoast.showToast(
+          msg: "Enter a valid title",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
       return;
     }
 
     if (_options.where((c) => c.text.trim().isNotEmpty).length < 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please add at least 2 options')),
-      );
+      Fluttertoast.showToast(
+          msg: "Please add at least 2 options!",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
       return;
     }
 
     if (_selectedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a deadline')),
-      );
+      Fluttertoast.showToast(
+          msg: "Please select a deadline!",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
       return;
     }
 
@@ -116,9 +132,14 @@ class _CreatePollState extends State<CreatePoll> {
         .toList();
 
     if (eligibleRanks.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select eligible voter ranks')),
-      );
+      Fluttertoast.showToast(
+          msg: "Nobody has been allowed to vote on this poll!",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
       return;
     }
 
@@ -240,18 +261,25 @@ class _CreatePollState extends State<CreatePoll> {
       _titleController.clear();
       _descriptionController.clear();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Poll created successfully!'),
-          backgroundColor: Colors.green,
-        ),
+      Fluttertoast.showToast(
+        msg: "Poll created successfully!",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.green,
+        textColor: Colors.white,
+        fontSize: 16.0,
       );
 
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to create poll: $e')),
-      );
+      Fluttertoast.showToast(
+          msg: "Poll creation failed: $e",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);

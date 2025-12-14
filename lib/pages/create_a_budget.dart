@@ -146,16 +146,48 @@ class _CreateBudgetState extends State<CreateBudget> {
     try {
       final docRef = FirebaseFirestore.instance.collection('expenses').doc('budgets');
       await docRef.set(payload);
-      Fluttertoast.showToast(msg: 'Budget posted successfully!');
+      Fluttertoast.showToast(
+        msg: "Budget posted successfully!",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.green,
+        textColor: Colors.white,
+        fontSize: 16.0,
+      );
       _titleController.clear();
       for (final row in _items) {
         row['name']!.clear();
         row['amount']!.clear();
       }
+      await _postClockInNotification();
     } catch (e) {
-      Fluttertoast.showToast(msg: 'Error posting budget: $e');
+      Fluttertoast.showToast(
+        msg: "Error posting budget: $e",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.orange,
+        textColor: Colors.white,
+        fontSize: 16.0,
+      );
     }
   }
+
+  Future<void> _postClockInNotification() async {
+    try {
+      final now = Timestamp.now();
+      final notifRef = FirebaseFirestore.instance.collection('notifications').doc('latest');
+
+      await notifRef.set({
+        'body': "There is a new budget posted.",
+        'targetRoles': ["Manager", "CEO", "Systems, IT"],
+        'timestamp': now,
+        'title': "Clockins",
+      });
+    } catch (e) {
+      debugPrint("Error posting clock-in notification: $e");
+    }
+  }
+
 
 
   @override
@@ -438,6 +470,18 @@ class _CreateBudgetState extends State<CreateBudget> {
                     ),
                   ),
                 ),
+
+
+                
+
+
+
+
+
+
+
+
+
               ),
             ],
           ),

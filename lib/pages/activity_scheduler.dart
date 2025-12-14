@@ -319,7 +319,7 @@ class _ActivitySchedulerState extends State<ActivityScheduler> {
             colors: isDark
                 ? [
                     theme.colorScheme.surface.withValues(alpha: 0.3),
-                    theme.colorScheme.background,
+                    theme.colorScheme.surface,
                   ]
                 : [
                     Colors.teal.withValues(alpha: 0.05),

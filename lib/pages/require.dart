@@ -131,10 +131,24 @@ class _RequirementsState extends State<Requirements> {
         'numberOfNotifications': FieldValue.increment(1),
       });
 
-      Fluttertoast.showToast(msg: 'Requirement added and notification sent!');
+      Fluttertoast.showToast(
+        msg: "Requirement created successfully!",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.green,
+        textColor: Colors.white,
+        fontSize: 16.0,
+      );
       previousBalanceController.clear();
     } catch (e) {
-      Fluttertoast.showToast(msg: 'Error: $e');
+      Fluttertoast.showToast(
+        msg: "Failed to create requirement. Please try again.",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+        fontSize: 16.0,
+      );
       debugPrint('handleRequire error: $e');
     }
   }
@@ -405,7 +419,7 @@ class _RequirementsState extends State<Requirements> {
     String? Function(T?)? validator,
   }) {
     return DropdownButtonFormField<T>(
-      value: value,
+      initialValue: value,
       isExpanded: true,
       items: items,
       onChanged: onChanged,

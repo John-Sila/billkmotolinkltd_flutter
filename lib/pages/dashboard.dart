@@ -176,9 +176,56 @@ class _DashboardState extends State<Dashboard> {
               collapsedHeight: kToolbarHeight,
               backgroundColor: theme.colorScheme.surface,
               foregroundColor: theme.colorScheme.onSurface,
-              title: Text('Welcome'),  // ✅ Title HERE (always visible)
+
+              title: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      theme.colorScheme.primary,
+                      theme.colorScheme.primary.withValues(alpha: 0.8),
+                    ],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(25),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.waving_hand,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Welcome',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+
+
+
+
+
+
               flexibleSpace: FlexibleSpaceBar(
-                // ✅ NO title property here
                 background: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -215,16 +262,44 @@ class _DashboardState extends State<Dashboard> {
                             color: Colors.white.withValues(alpha: 0.9),
                           ),
                         ),
-                        Text(
+
+
+                      ShaderMask(
+                        shaderCallback: (bounds) => LinearGradient(
+                          colors: [
+                            Colors.white,
+                            theme.colorScheme.primary.withOpacity(0.8),
+                          ],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ).createShader(bounds),
+                        child: Text(
                           userName,
                           style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            shadows: [
+                              Shadow(
+                                offset: const Offset(0, 2),
+                                blurRadius: 10,
+                                color: Colors.black.withOpacity(0.4),
+                              ),
+                            ],
+                            letterSpacing: 0.8,
+                            height: 1.1,
                           ),
                         ),
+                      ),
+
+                        
                       ],
                     ),
                   ),
+                
+                
+                
+                
                 ),
               ),
             ),
@@ -263,7 +338,7 @@ class _DashboardState extends State<Dashboard> {
   Widget _buildEventsSection(ThemeData theme) {
     return Card(
       elevation: 8,
-      shadowColor: theme.colorScheme.primary.withOpacity(0.3),
+      shadowColor: theme.colorScheme.primary.withValues(alpha: 0.3),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Container(
         padding: const EdgeInsets.all(24),
@@ -285,7 +360,7 @@ class _DashboardState extends State<Dashboard> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(Icons.event, color: theme.colorScheme.primary, size: 24),
@@ -317,12 +392,12 @@ class _DashboardState extends State<Dashboard> {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: isFuture 
-                      ? theme.colorScheme.primary.withOpacity(0.08)
-                      : theme.colorScheme.surfaceContainerHighest?.withOpacity(0.5) ?? Colors.grey.withOpacity(0.1),
+                      ? theme.colorScheme.primary.withValues(alpha: 0.08)
+                      : theme.colorScheme.surfaceContainerHighest?.withValues(alpha: 0.5) ?? Colors.grey.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isFuture 
-                        ? theme.colorScheme.primary.withOpacity(0.2)
+                        ? theme.colorScheme.primary.withValues(alpha: 0.2)
                         : theme.colorScheme.outlineVariant ?? Colors.grey,
                     ),
                   ),
@@ -449,7 +524,7 @@ class _DashboardState extends State<Dashboard> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(

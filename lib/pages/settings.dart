@@ -1,7 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/pages/help_and_faq.dart';
 import 'package:flutter_application_1/pages/my_profile.dart';
 import 'package:flutter_application_1/pages/terms_and_conditions.dart';
+import 'package:flutter_application_1/pages/view_and_clear_app_data.dart';
 
 class UserSettings extends StatefulWidget {
   const UserSettings({super.key});
@@ -11,14 +13,16 @@ class UserSettings extends StatefulWidget {
 }
 
 class _UserSettingsState extends State<UserSettings> {
-  bool _notificationsEnabled = true;
-  bool _darkModeEnabled = false;
-  bool _biometricEnabled = true;
-  double _volume = 0.7;
+
+  Future<void> logout() async {
+    // Implement your logout logic here
+    FirebaseAuth.instance.signOut();
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
@@ -38,52 +42,6 @@ class _UserSettingsState extends State<UserSettings> {
 
           const SizedBox(height: 24),
 
-          // Appearance Section
-          _buildSectionHeader('Appearance'),
-          SwitchListTile.adaptive(
-            value: _darkModeEnabled,
-            onChanged: (value) => setState(() => _darkModeEnabled = value),
-            title: Text('Dark Mode', style: theme.textTheme.titleMedium),
-            subtitle: const Text('Switch between light and dark themes'),
-            activeThumbColor: Colors.teal,
-            activeTrackColor: Colors.teal.withValues(alpha: 0.3),
-            contentPadding: const EdgeInsets.only(left: 4, right: 16),
-          ),
-
-          const SizedBox(height: 12),
-          SwitchListTile.adaptive(
-            value: _biometricEnabled,
-            onChanged: (value) => setState(() => _biometricEnabled = value),
-            title: Text('Biometric Login', style: theme.textTheme.titleMedium),
-            subtitle: const Text('Use fingerprint or face ID'),
-            activeThumbColor: Colors.teal,
-            activeTrackColor: Colors.teal.withValues(alpha: 0.3),
-            contentPadding: const EdgeInsets.only(left: 4, right: 16),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Notifications Section
-          _buildSectionHeader('Notifications'),
-          SwitchListTile.adaptive(
-            value: _notificationsEnabled,
-            onChanged: (value) => setState(() => _notificationsEnabled = value),
-            title: Text('Push Notifications', style: theme.textTheme.titleMedium),
-            subtitle: const Text('Receive updates on new activity'),
-            activeThumbColor: Colors.teal,
-            activeTrackColor: Colors.teal.withValues(alpha: 0.3),
-            contentPadding: const EdgeInsets.only(left: 4, right: 16),
-          ),
-          _buildSliderTile(
-            context,
-            Icons.volume_up,
-            'Notification Volume',
-            _volume,
-            (value) => setState(() => _volume = value),
-          ),
-
-          const SizedBox(height: 24),
-
           // Data & Storage
           _buildSectionHeader('Data & Storage'),
           _buildNavTile(
@@ -91,16 +49,11 @@ class _UserSettingsState extends State<UserSettings> {
             Icons.storage,
             'Manage Storage',
             'View and clear app data',
-            () {},
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ViewAndClearAppData()),
+            ),
           ),
-          _buildNavTile(
-            context,
-            Icons.history_edu_outlined,
-            'Download History',
-            'View downloaded content',
-            () {},
-          ),
-
           const SizedBox(height: 24),
 
           // Support Section
@@ -136,7 +89,7 @@ class _UserSettingsState extends State<UserSettings> {
             context,
             Icons.info_outline,
             'About BILLK MOTOLINK LTD',
-            'Version 2.1.3 | Learn more about us',
+            'Version 2.1.1 | Learn more about us',
             () {},
           ),
 
@@ -148,7 +101,7 @@ class _UserSettingsState extends State<UserSettings> {
             Icons.logout,
             'Log Out',
             () {
-              // Handle logout
+              logout();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Logged out successfully'),
@@ -230,79 +183,147 @@ class _UserSettingsState extends State<UserSettings> {
     );
   }
 
-  Widget _buildSliderTile(
-    BuildContext context,
-    IconData icon,
-    String title,
-    double value,
-    ValueChanged<double> onChanged,
-  ) {
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: 0,
-      color: Colors.transparent,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: Colors.teal, size: 24),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(title, style: Theme.of(context).textTheme.titleMedium),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Slider(
-              value: value,
-              min: 0.0,
-              max: 1.0,
-              divisions: 10,
-              onChanged: onChanged,
-              activeColor: Colors.teal,
-              inactiveColor: Colors.grey.shade300,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  Widget _buildDestructiveTile(
-    BuildContext context,
-    IconData icon,
-    String title,
-    VoidCallback onTap,
-  ) {
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: 0,
+Widget _buildDestructiveTile(
+  BuildContext context,
+  IconData icon,
+  String title,
+  VoidCallback onTap,
+) {
+  Theme.of(context);
+  
+  return Container(
+    margin: const EdgeInsets.symmetric(vertical: 4),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          Colors.red.withValues(alpha: 0.15),
+          Colors.red.shade50,
+          Colors.red.withValues(alpha: 0.1),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(
+        color: Colors.red.withValues(alpha: 0.4),
+        width: 2,
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.red.withValues(alpha: 0.3),
+          blurRadius: 16,
+          offset: const Offset(0, 6),
+          spreadRadius: 0,
+        ),
+        BoxShadow(
+          color: Colors.red.withValues(alpha: 0.15),
+          blurRadius: 24,
+          offset: const Offset(0, 12),
+        ),
+      ],
+    ),
+    child: Material(
       color: Colors.transparent,
+      borderRadius: BorderRadius.circular(20),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
         onTap: onTap,
+        splashColor: Colors.red.withValues(alpha: 0.2),
+        highlightColor: Colors.red.withValues(alpha: 0.1),
         child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-          ),
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
           child: Row(
             children: [
-              Icon(icon, color: Colors.red, size: 24),
-              const SizedBox(width: 16),
-              Text(title, 
-                   style: const TextStyle(
-                     color: Colors.red,
-                     fontWeight: FontWeight.w600,
-                     fontSize: 16,
-                   )),
+              // Animated Icon Container
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.red.shade500, Colors.red.shade700],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.withValues(alpha: 0.5),
+                      blurRadius: 20,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  icon,
+                  color: Colors.white,
+                  size: 24,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      offset: const Offset(0, 2),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 20),
+              
+              // Title with gradient text
+              Expanded(
+                child: ShaderMask(
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [Colors.red.shade800, Colors.red.shade600],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ).createShader(bounds),
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: 0.3,
+                      height: 1.2,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black.withValues(alpha: 0.4),
+                          offset: const Offset(0, 2),
+                          blurRadius: 8,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              
+              // Trailing arrow with glow
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.red.shade400, Colors.red.shade600],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.withValues(alpha: 0.6),
+                      blurRadius: 12,
+                      offset: const Offset(2, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.arrow_forward_ios,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ),
             ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
+
+
 }

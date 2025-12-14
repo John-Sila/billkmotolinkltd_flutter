@@ -413,6 +413,10 @@ class _ClockOutState extends State<ClockOut> {
             userSnap.get('clockInTime').millisecondsSinceEpoch
       };
 
+      final notificationId =
+        DateTime.now().millisecondsSinceEpoch.toString();
+        
+
       await userRef.update({
         "clockouts.$dateKey": clockoutData,
         "currentInAppBalance": todaysIAB,
@@ -421,6 +425,12 @@ class _ClockOutState extends State<ClockOut> {
         "pendingAmount": double.parse((pendingAmountOld + netIncome).toStringAsFixed(2)),
         "lastClockDate": now,
         "currentBike": "None",
+        'notifications.$notificationId': {
+          'isRead': false,
+          'message': 'You\'re clocked out for today.',
+          'time': now,
+        },
+        "numberOfNotifications": FieldValue.increment(1),
       });
 
       // -----------------------------------------------------------------------
@@ -472,7 +482,14 @@ class _ClockOutState extends State<ClockOut> {
       });
 
 
-      Fluttertoast.showToast(msg: "Clocked out successfully");
+      Fluttertoast.showToast(
+        msg: "Clock-out successful!",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.green,
+        textColor: Colors.white,
+        fontSize: 16.0,
+      );
       await _postClockOutNotification(userName);
     } catch (e) {
       if (!mounted) return;
@@ -505,7 +522,7 @@ class _ClockOutState extends State<ClockOut> {
 
       await notifRef.set({
         'body': "$userName just clocked out.",
-        'targetRoles': ["Admin", "CEO", "Systems, IT"],
+        'targetRoles': ["Manager", "CEO", "Systems, IT"],
         'timestamp': now,
         'title': "Clockouts",
       });

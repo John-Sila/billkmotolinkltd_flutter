@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 class FullScreenLoader extends StatelessWidget {
   const FullScreenLoader({super.key});
@@ -137,6 +138,15 @@ class _UserManagerState extends State<UserManager> {
       await auth.signInWithEmailAndPassword(
         email: adminEmail,
         password: adminPassword,
+      );
+
+      Fluttertoast.showToast(
+        msg: "${fullName.split(" ")[0]} can log in to the platform now!",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.green,
+        textColor: Colors.white,
+        fontSize: 16.0,
       );
 
       Navigator.pop(context);

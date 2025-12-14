@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import '../services/firebase_global.dart';
 import 'package:intl/intl.dart';
@@ -9,7 +8,7 @@ class MyProfile extends StatelessWidget {
 
   Future<void> applyLeave() async {
     Fluttertoast.showToast(
-        msg: "Kindly consult the Administration for forms",
+        msg: "Kindly consult the administration for forms",
         toastLength: Toast.LENGTH_LONG,
         gravity: ToastGravity.BOTTOM,
         backgroundColor: Colors.orange,
@@ -233,13 +232,16 @@ class MyProfile extends StatelessWidget {
           const SizedBox(height: 24),
           
           // Work Stats
-          _buildSectionHeader(context, 'Work Stats'),
-          _buildWorkInfoCard(context, 'dailyTarget', 'Daily Target', _formatNumber(userData['dailyTarget'])),
-          _buildWorkInfoCard(context, 'currentBike', 'Current Bike', _safeToString(userData['currentBike'], 'None')),
-          _buildWorkInfoCard(context, 'currentInAppBalance', 'Balance', _formatCurrency(userData['currentInAppBalance'])),
-          _buildWorkInfoCard(context, 'numberOfNotifications', 'Notifications', _formatNumber(userData['numberOfNotifications'])),
           
-          const SizedBox(height: 24),
+          if (userData['userRank']?.toString().toLowerCase() != 'ceo') ...[
+            _buildSectionHeader(context, 'Work Stats'),
+            _buildWorkInfoCard(context, 'dailyTarget', 'Daily Target', _formatNumber(userData['dailyTarget'])),
+            _buildWorkInfoCard(context, 'currentBike', 'Current Bike', _safeToString(userData['currentBike'], 'None')),
+            _buildWorkInfoCard(context, 'currentInAppBalance', 'Balance', _formatCurrency(userData['currentInAppBalance'])),
+            _buildWorkInfoCard(context, 'numberOfNotifications', 'Notifications', _formatNumber(userData['numberOfNotifications'])),
+            const SizedBox(height: 24),
+          ],
+
           
           // Status Indicators
           _buildSectionHeader(context, 'Status'),
@@ -274,14 +276,10 @@ class MyProfile extends StatelessWidget {
     return 'Ksh ${numValue.toStringAsFixed(0)}';
   }
 
-
-  String _formatHours(dynamic value) {
-    if (value == null) return '0.0h';
-    final numValue = (value is num) ? value : double.tryParse(value.toString()) ?? 0.0;
-    return '${numValue.toStringAsFixed(1)}h';
-  }
-
   Widget _buildStatsRow(BuildContext context, Map<String, dynamic> userData) {
+    if (userData['userRank'] == "CEO") {
+      return const SizedBox.shrink();
+    }
     final items = [
       StatsItem('Daily Target', _formatNumber(userData['dailyTarget'])),
       StatsItem('Previous Net', _formatNumber(userData['netClockedLastly'])),
@@ -339,19 +337,23 @@ class MyProfile extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed:() => applyLeave(),
-            icon: const Icon(Icons.work_outline, size: 20),
-            label: const Text('Apply Leave'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed:() => applyLeave(),
+              icon: const Icon(Icons.work_outline, size: 20),
+              label: const Text('Apply Leave'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
             ),
           ),
-        ),
+          
+        const SizedBox(width: 12),
+
+        
       ],
     );
   }

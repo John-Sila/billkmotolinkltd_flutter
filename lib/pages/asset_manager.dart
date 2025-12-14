@@ -298,7 +298,7 @@ Future<void> _deleteBike(String bike) async {
     // Fetch battery data to check assignment
     try {
       final doc = await FirebaseFirestore.instance.collection('batteries').doc(batteryId).get();
-      final data = doc.data() as Map<String, dynamic>? ?? {};
+      final data = doc.data() ?? {};
       final assignedRider = data['assignedRider'] ?? 'None';
       
       if (assignedRider != 'None') {
@@ -341,9 +341,9 @@ Future<void> _deleteBike(String bike) async {
               return Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceVariant?.withOpacity(0.5),
+                  color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: theme.colorScheme.outlineVariant!),
+                  border: Border.all(color: theme.colorScheme.outlineVariant),
                 ),
                 child: Row(
                   children: [
@@ -383,13 +383,13 @@ Future<void> _deleteBike(String bike) async {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: isAssigned 
-                      ? Colors.orange.withOpacity(0.1)
-                      : theme.colorScheme.surfaceVariant?.withOpacity(0.3),
+                      ? Colors.orange.withValues(alpha: 0.1)
+                      : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isAssigned 
-                        ? Colors.orange.withOpacity(0.3)
-                        : theme.colorScheme.outlineVariant!,
+                        ? Colors.orange.withValues(alpha: 0.3)
+                        : theme.colorScheme.outlineVariant,
                     ),
                   ),
                   child: Row(
@@ -447,9 +447,9 @@ Future<void> _deleteBike(String bike) async {
       return Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceVariant?.withOpacity(0.5),
+          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: theme.colorScheme.outlineVariant!),
+          border: Border.all(color: theme.colorScheme.outlineVariant),
         ),
         child: Row(
           children: [
@@ -477,13 +477,13 @@ Future<void> _deleteBike(String bike) async {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: isAssigned 
-                ? Colors.orange.withOpacity(0.1)
-                : theme.colorScheme.surfaceVariant?.withOpacity(0.3),
+                ? Colors.orange.withValues(alpha: 0.1)
+                : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isAssigned 
-                  ? Colors.orange.withOpacity(0.3)
-                  : theme.colorScheme.outlineVariant!,
+                  ? Colors.orange.withValues(alpha: 0.3)
+                  : theme.colorScheme.outlineVariant,
               ),
             ),
             child: Row(
@@ -544,7 +544,7 @@ Future<void> _deleteBike(String bike) async {
             // Add Battery Section
             _buildSection(theme, 'Add Battery', [
               DropdownButtonFormField<String>(
-                value: _selectedDestination,
+                initialValue: _selectedDestination,
                 hint: const Text('Select location'),
                 items: _destinations
                     .map((d) => DropdownMenuItem(value: d, child: Text(d)))
@@ -555,7 +555,7 @@ Future<void> _deleteBike(String bike) async {
                   prefixIcon: Icon(Icons.location_on, color: theme.colorScheme.primary),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                   filled: true,
-                  fillColor: theme.colorScheme.surfaceVariant?.withOpacity(0.5),
+                  fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                 ),
               ),
               const SizedBox(height: 16),
@@ -566,7 +566,7 @@ Future<void> _deleteBike(String bike) async {
                   prefixIcon: Icon(Icons.battery_full, color: theme.colorScheme.primary),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                   filled: true,
-                  fillColor: theme.colorScheme.surfaceVariant?.withOpacity(0.5),
+                  fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                 ),
               ),
               const SizedBox(height: 20),
@@ -597,7 +597,7 @@ Future<void> _deleteBike(String bike) async {
                   prefixIcon: Icon(Icons.two_wheeler, color: theme.colorScheme.primary),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                   filled: true,
-                  fillColor: theme.colorScheme.surfaceVariant?.withOpacity(0.5),
+                  fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                 ),
               ),
               const SizedBox(height: 20),
@@ -628,7 +628,7 @@ Future<void> _deleteBike(String bike) async {
                   prefixIcon: Icon(Icons.location_city, color: theme.colorScheme.primary),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                   filled: true,
-                  fillColor: theme.colorScheme.surfaceVariant?.withOpacity(0.5),
+                  fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                 ),
               ),
               const SizedBox(height: 20),
@@ -675,7 +675,7 @@ Future<void> _deleteBike(String bike) async {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           gradient: LinearGradient(
-            colors: [theme.colorScheme.surface, theme.colorScheme.surfaceVariant!],
+            colors: [theme.colorScheme.surface, theme.colorScheme.surfaceContainerHighest],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -688,7 +688,7 @@ Future<void> _deleteBike(String bike) async {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(Icons.add_circle, color: theme.colorScheme.primary, size: 24),

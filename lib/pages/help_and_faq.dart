@@ -128,18 +128,18 @@ class HelpAndFAQ extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    theme.colorScheme.primary.withOpacity(0.15),
-                    theme.colorScheme.primaryContainer?.withOpacity(0.2) ?? theme.colorScheme.primary.withOpacity(0.1),
+                    theme.colorScheme.primary.withValues(alpha: 0.15),
+                    theme.colorScheme.primaryContainer?.withValues(alpha: 0.2) ?? theme.colorScheme.primary.withValues(alpha: 0.1),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: theme.colorScheme.primary.withOpacity(0.3),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.3),
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: theme.colorScheme.primary.withOpacity(0.2),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -151,7 +151,7 @@ class HelpAndFAQ extends StatelessWidget {
                   Icon(Icons.support_agent, color: theme.colorScheme.primary, size: 18),
                   const SizedBox(width: 8),
                   Text(
-                    'Contact Us',
+                    'Contact IT',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -160,6 +160,13 @@ class HelpAndFAQ extends StatelessWidget {
                   ),
                 ],
               ),
+
+
+              
+
+
+
+
             ),
           ),
         ],
@@ -182,18 +189,18 @@ class HelpAndFAQ extends StatelessWidget {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          theme.colorScheme.secondary.withOpacity(0.1),
-                          theme.colorScheme.secondaryContainer ?? theme.colorScheme.secondary.withOpacity(0.05),
+                          theme.colorScheme.secondary.withValues(alpha: 0.1),
+                          theme.colorScheme.secondaryContainer ?? theme.colorScheme.secondary.withValues(alpha: 0.05),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
-                        color: theme.colorScheme.secondary.withOpacity(0.2),
+                        color: theme.colorScheme.secondary.withValues(alpha: 0.2),
                         width: 1.5,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: theme.colorScheme.secondary.withOpacity(0.1),
+                          color: theme.colorScheme.secondary.withValues(alpha: 0.1),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),
@@ -209,7 +216,7 @@ class HelpAndFAQ extends StatelessWidget {
                                 gradient: LinearGradient(
                                   colors: [
                                     theme.colorScheme.secondary,
-                                    theme.colorScheme.secondary.withOpacity(0.8),
+                                    theme.colorScheme.secondary.withValues(alpha: 0.8),
                                   ],
                                 ),
                                 borderRadius: BorderRadius.circular(20),
@@ -330,7 +337,7 @@ class HelpAndFAQ extends StatelessWidget {
         border: Border.all(color: theme.colorScheme.outlineVariant!),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.surfaceTint.withOpacity(0.1),
+            color: theme.colorScheme.surfaceTint.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -342,8 +349,8 @@ class HelpAndFAQ extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                theme.colorScheme.primary.withOpacity(0.2),
-                theme.colorScheme.primaryContainer?.withOpacity(0.3) ?? Colors.transparent,
+                theme.colorScheme.primary.withValues(alpha: 0.2),
+                theme.colorScheme.primaryContainer?.withValues(alpha: 0.3) ?? Colors.transparent,
               ],
             ),
             borderRadius: BorderRadius.circular(16),
@@ -377,7 +384,7 @@ class HelpAndFAQ extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
         ),
         collapsedBackgroundColor: theme.colorScheme.surface,
-        backgroundColor: theme.colorScheme.surfaceVariant?.withOpacity(0.3),
+        backgroundColor: theme.colorScheme.surfaceVariant?.withValues(alpha: 0.3),
       ),
     );
   }
@@ -389,13 +396,13 @@ class HelpAndFAQ extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            theme.colorScheme.errorContainer!.withOpacity(0.2),
-            theme.colorScheme.errorContainer!.withOpacity(0.1),
+            theme.colorScheme.errorContainer!.withValues(alpha: 0.2),
+            theme.colorScheme.errorContainer!.withValues(alpha: 0.1),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: theme.colorScheme.error.withOpacity(0.2),
+          color: theme.colorScheme.error.withValues(alpha: 0.2),
           width: 1.5,
         ),
       ),
@@ -406,7 +413,7 @@ class HelpAndFAQ extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.error.withOpacity(0.2),
+                  color: theme.colorScheme.error.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(

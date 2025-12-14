@@ -146,7 +146,14 @@ class SwapBatteriesState extends State<SwapBatteries> {
       );
 
       if (qrCodeRaw == null) {
-        Fluttertoast.showToast(msg: "Scan cancelled");
+        Fluttertoast.showToast(
+          msg: "Scan cancelled",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
         setState(() => scanningOffload = false);
         return;
       }
@@ -155,7 +162,14 @@ class SwapBatteriesState extends State<SwapBatteries> {
 
       // Prevent duplicate scans
       if (scannedOffBatteryCodes.contains(qrCode)) {
-        Fluttertoast.showToast(msg: "Battery already scanned");
+        Fluttertoast.showToast(
+          msg: "Battery already scanned",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
         setState(() => scanningOffload = false);
         return;
       }
@@ -167,7 +181,14 @@ class SwapBatteriesState extends State<SwapBatteries> {
           .get();
 
       if (query.docs.isEmpty) {
-        Fluttertoast.showToast(msg: "Battery not found");
+        Fluttertoast.showToast(
+          msg: "Battery not found",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
         setState(() => scanningOffload = false);
         return;
       }
@@ -177,18 +198,39 @@ class SwapBatteriesState extends State<SwapBatteries> {
       final batteryName = data['batteryName'] ?? "Unknown Battery";
 
       if (assignedRider == userName) {
-        Fluttertoast.showToast(msg: "Battery usable");
+        Fluttertoast.showToast(
+          msg: "Battery usable",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
         setState(() {
           scannedOffBatteries.add(batteryName);
           scannedOffBatteryCodes.add(qrCode);
           scanningOffload = false;
         });
       } else {
-        Fluttertoast.showToast(msg: "Battery needs to be assigned to you.");
+        Fluttertoast.showToast(
+          msg: "Offload battery needs to be assigned to you",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
         setState(() => scanningOffload = false);
       }
     } catch (e) {
-      Fluttertoast.showToast(msg: "Error: ${e.toString()}");
+      Fluttertoast.showToast(
+        msg: "Error: ${e.toString()}",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+        fontSize: 16.0,
+      );
       setState(() => scanningOffload = false);
     }
   }
@@ -208,7 +250,14 @@ class SwapBatteriesState extends State<SwapBatteries> {
       );
 
       if (qrCodeRaw == null) {
-        Fluttertoast.showToast(msg: "Scan cancelled");
+        Fluttertoast.showToast(
+          msg: "Scan cancelled",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
         setState(() => scanningOnload = false);
         return;
       }
@@ -217,7 +266,14 @@ class SwapBatteriesState extends State<SwapBatteries> {
 
       // Prevent duplicate scans
       if (scannedOnBatteryCodes.contains(qrCode)) {
-        Fluttertoast.showToast(msg: "Battery already scanned");
+        Fluttertoast.showToast(
+          msg: "Battery already scanned ",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
         setState(() => scanningOnload = false);
         return;
       }
@@ -229,7 +285,14 @@ class SwapBatteriesState extends State<SwapBatteries> {
           .get();
 
       if (query.docs.isEmpty) {
-        Fluttertoast.showToast(msg: "Battery not found");
+        Fluttertoast.showToast(
+          msg: "Battery not found",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
         setState(() => scanningOnload = false);
         return;
       }
@@ -242,20 +305,41 @@ class SwapBatteriesState extends State<SwapBatteries> {
       final bookedBy = data['bookedBy'] ?? "another rider.";
 
       if (isBooked && bookedBy != userName) {
-        Fluttertoast.showToast(msg: "Battery is booked by ${bookedBy.toString()}");
+        Fluttertoast.showToast(
+          msg: "Battery is booked by ${bookedBy.toString()}",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
         setState(() => scanningOnload = false);
         return;
       }
 
       if (assignedRider == "None" && assignedBike == "None") {
-        Fluttertoast.showToast(msg: "Battery usable");
+        Fluttertoast.showToast(
+          msg: "Battery usable",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
         setState(() {
           scannedOnBatteries.add(batteryName);
           scannedOnBatteryCodes.add(qrCode);
           scanningOnload = false;
         });
       } else {
-        Fluttertoast.showToast(msg: "Battery unavailable");
+        Fluttertoast.showToast(
+          msg: "Battery unavailable for loading",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
         setState(() => scanningOnload = false);
       }
     } catch (e) {
@@ -328,7 +412,14 @@ class SwapBatteriesState extends State<SwapBatteries> {
       // Commit all updates at once
       await batch.commit();
 
-      Fluttertoast.showToast(msg: "Swap was successful.");
+      Fluttertoast.showToast(
+        msg: "Batteries swapped successfully!",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.green,
+        textColor: Colors.white,
+        fontSize: 16.0,
+      );
 
       setState(() => isSwapping = false);
       resetScans();
@@ -349,7 +440,14 @@ class SwapBatteriesState extends State<SwapBatteries> {
       scanningOnload = false;
       scanningOffload = false;
     });
-    Fluttertoast.showToast(msg: "Scan list reset");
+    Fluttertoast.showToast(
+      msg: "Scan list reset",
+      toastLength: Toast.LENGTH_LONG,
+      gravity: ToastGravity.BOTTOM,
+      backgroundColor: Colors.red,
+      textColor: Colors.white,
+      fontSize: 16.0,
+    );
   }
 
   void showSwapConfirmationDialog() {
@@ -658,7 +756,7 @@ Widget _buildDropdownField<T>({
   String? Function(T?)? validator,
 }) {
   return DropdownButtonFormField<T>(
-    value: value,
+    initialValue: value,
     items: items,
     onChanged: onChanged,
     validator: validator,

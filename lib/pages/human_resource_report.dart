@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -88,7 +89,7 @@ class _HumanResourceReportsState extends State<HumanResourceReports> {
         _budget!['status'] = 'Approved';
       });
 
-      // 2. Find all CEO users and notify them
+      // 2. Find all relevant ranks and notify them
       final usersSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .where('userRank', whereIn: ['CEO', 'Systems, IT', 'Human Resource'])
@@ -115,6 +116,15 @@ class _HumanResourceReportsState extends State<HumanResourceReports> {
       }
 
       await batch.commit();
+
+      Fluttertoast.showToast(
+        msg: "Budget approved successfully!",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.green,
+        textColor: Colors.white,
+        fontSize: 16.0,
+      );
 
     } catch (e) {
       debugPrint('Error approving budget: $e');
@@ -186,7 +196,7 @@ class _HumanResourceReportsState extends State<HumanResourceReports> {
       // AFTER SUCCESSFUL DISBURSEMENT: notify Managers + Human Resource
       final usersSnapshot = await FirebaseFirestore.instance
           .collection('users')
-          .where('userRank', whereIn: ['Manager', 'Human Resource'])
+          .where('userRank', whereIn: ['Manager', 'Human Resource', 'Systems, IT'])
           .get();
 
       final batch = FirebaseFirestore.instance.batch();
@@ -201,7 +211,7 @@ class _HumanResourceReportsState extends State<HumanResourceReports> {
           {
             'notifications.$notificationId.isRead': false,
             'notifications.$notificationId.message':
-                'Budget has been disbursed. Please proceed with allocation and tracking.',
+                'Income for budget has been disbursed.',
             'notifications.$notificationId.time': now,
             'numberOfNotifications': FieldValue.increment(1),
           },
@@ -210,12 +220,13 @@ class _HumanResourceReportsState extends State<HumanResourceReports> {
 
       await batch.commit();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Budget disbursed successfully!'),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
+      Fluttertoast.showToast(
+        msg: "Budget disbursed successfully!",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.green,
+        textColor: Colors.white,
+        fontSize: 16.0,
       );
     } catch (e) {
       if (e.toString().contains('Insufficient funds')) {

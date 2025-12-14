@@ -7,6 +7,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_1/pages/charge_batteries.dart';
 import 'package:flutter_application_1/pages/settings.dart';
 import 'package:flutter_application_1/pages/swap_batteries.dart';
+import 'package:flutter_application_1/services/notifier.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/firebase_options.dart';
 
@@ -37,8 +39,42 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   final isDarkMode = prefs.getBool('isDarkMode') ?? false;
 
+  await setupNotificationSystem();
+
   runApp(BillkMotolinkApp(initialIsDarkMode: isDarkMode));
 }
+
+Future<bool> requestAllPermissions() async {
+  Map<Permission, PermissionStatus> statuses = await [
+    Permission.notification,  // POST_NOTIFICATIONS
+    Permission.scheduleExactAlarm,
+  ].request();
+
+  bool allGranted = statuses[Permission.notification]?.isGranted ?? false;
+  return allGranted;
+}
+
+
+Future<void> setupNotificationSystem() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // 1. Request permissions FIRST
+  final permissionsGranted = await requestAllPermissions();
+  if (!permissionsGranted) {
+    print("❌ Permissions denied - notifications won't work");
+    return;
+  }
+  
+  // 2. Initialize Firebase & notifications
+  await Firebase.initializeApp();
+  await initNotifications();
+  
+  // 3. Start background service
+  await initializeBackgroundService();
+  
+  print("✅ Notification system fully setup");
+}
+
 
 class BillkMotolinkApp extends StatefulWidget {
   final bool initialIsDarkMode;
@@ -257,6 +293,42 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
     _animationTimer?.cancel();
     super.dispose();
   }
+
+
+  final Map<String, List<int>> _rolePermissions = {
+    // general Staff
+    'Staff': [0],
+    
+    // Rider only  
+    'Rider': [0, 1, 2, 3, 4, 5, 6, 7, 16], // Batteries
+    
+    // Manager only
+    'Manager': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], // Create Budget, Require, Activity Scheduler
+    
+    // IT only
+    'Systems, IT': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], // Asset Manager, User Manager, Profiles
+    
+    // HR only
+    'Human Resource': [0, 8, 16], // Asset Manager, User Manager, Profiles
+    
+    // CEO only
+    'CEO': [0, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], // Create Poll, Reports, Settings
+  };
+
+  // 2. Get filtered indices based on user rank
+  List<int> _getVisibleIndices(String userRank) {
+    final allIndices = <int>[];
+    
+    // Always include 'all' permissions
+    allIndices.addAll(_rolePermissions['all'] ?? []);
+    
+    // Add role-specific permissions
+    final roleIndices = _rolePermissions[userRank] ?? [];
+    allIndices.addAll(roleIndices);
+    
+    return allIndices.toSet().toList(); // Remove duplicates
+  }
+
 
 
 
@@ -633,59 +705,77 @@ Widget _buildDrawerHeader(BuildContext context) {
       ),
 
 
-  drawer: Drawer(
-    backgroundColor: Colors.transparent,
-    elevation: 0,
-    child: Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: _getDrawerGradient(Theme.of(context)),
-          stops: const [0.0, 0.5, 1.0],
-        ),
-      ),
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Adaptive Header
-            _buildDrawerHeader(context),
-            
-            // Menu Items Container
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _getDrawerContentBg(Theme.of(context)),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(32),
-                    topRight: Radius.circular(32),
-                  ),
-                ),
-                child: ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
-                  itemCount: _titles.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 2),
-                  itemBuilder: (context, index) {
-                    final isSelected = _selectedIndex == index;
-                    return _buildModernDrawerItem(
-                      context: context,
-                      index: index,
-                      icon: _getDrawerIcon(index),
-                      title: _titles[index],
-                      isSelected: isSelected,
-                    );
-                  },
-                ),
-              ),
+      drawer: Drawer(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: _getDrawerGradient(Theme.of(context)),
+              stops: const [0.0, 0.5, 1.0],
             ),
-            
-            // Adaptive Bottom Actions
-            _buildBottomActions(context),
-          ],
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                // Adaptive Header
+                _buildDrawerHeader(context),
+                
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: _getDrawerContentBg(Theme.of(context)),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(32),
+                        topRight: Radius.circular(32),
+                      ),
+                    ),
+                    child: StreamBuilder<DocumentSnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(FirebaseAuth.instance.currentUser?.uid)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        String userRank = 'Staff'; // Default fallback
+                        
+                        if (snapshot.hasData && snapshot.data!.exists) {
+                          userRank = snapshot.data!['userRank']?.toString() ?? 'Staff';
+                        }
+                        
+                        final visibleIndices = _getVisibleIndices(userRank);
+                        return ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+                          itemCount: visibleIndices.length,
+                          separatorBuilder: (context, index) => const SizedBox(height: 2),
+                          itemBuilder: (context, listIndex) {
+                            final index = visibleIndices[listIndex];
+                            final isSelected = _selectedIndex == index;
+                            
+                            return _buildModernDrawerItem(
+                              context: context,
+                              index: index,
+                              icon: _getDrawerIcon(index),
+                              title: _titles[index],
+                              isSelected: isSelected,
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ),       
+               
+               
+               
+                // Adaptive Bottom Actions
+                _buildBottomActions(context),
+              ],
+            ),
+          ),
         ),
       ),
-    ),
-  ),
 
       
       

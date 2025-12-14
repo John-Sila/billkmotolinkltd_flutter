@@ -179,7 +179,14 @@ class ChargeBatteriesState extends State<ChargeBatteries> {
           scanning = false;
         });
       } else {
-        Fluttertoast.showToast(msg: "Battery needs to be assigned to you.");
+        Fluttertoast.showToast(
+          msg: "Batttery needs to be assigned to you.",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
         setState(() => scanning = false);
       }
     } catch (e) {
@@ -247,7 +254,14 @@ class ChargeBatteriesState extends State<ChargeBatteries> {
       // Commit all updates at once
       await batch.commit();
 
-      Fluttertoast.showToast(msg: "Action successful.");
+      Fluttertoast.showToast(
+          msg: "Batteries marked as charging!",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.green,
+          textColor: Colors.white,
+          fontSize: 16.0,
+        );
 
       setState(() => isCharging = false);
       resetScans();
@@ -264,7 +278,14 @@ class ChargeBatteriesState extends State<ChargeBatteries> {
       scannedBatteryCodes.clear();
       scanning = false;
     });
-    Fluttertoast.showToast(msg: "Scan list reset");
+    Fluttertoast.showToast(
+      msg: "Scan list reset",
+      toastLength: Toast.LENGTH_LONG,
+      gravity: ToastGravity.BOTTOM,
+      backgroundColor: Colors.red,
+      textColor: Colors.white,
+      fontSize: 16.0,
+    );
   }
 
   void showSwapConfirmationDialog() {
@@ -519,7 +540,7 @@ Widget _buildDropdownField<T>({
   String? Function(T?)? validator,
 }) {
   return DropdownButtonFormField<T>(
-    value: value,
+    initialValue: value,
     items: items,
     onChanged: onChanged,
     validator: validator,

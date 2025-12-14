@@ -12,9 +12,9 @@ class RiderDailyStatistics extends StatefulWidget {
 class _RiderDailyStatisticsState extends State<RiderDailyStatistics> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Map<String, Map<String, dynamic>> _usersClockouts = {};
+  final Map<String, Map<String, dynamic>> _usersClockouts = {};
   Map<String, String> _usernames = {};
-  Set<String> _fetchedUsers = {};
+  final Set<String> _fetchedUsers = {};
   bool _loadingUsers = true;
 
   // Ordered and filtered field labels - ONLY wanted fields
@@ -206,7 +206,7 @@ body: _loadingUsers
           Container(
             padding: const EdgeInsets.all(48),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -414,7 +414,7 @@ body: _loadingUsers
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: theme.dividerColor, width: 1),
             ),
@@ -509,7 +509,7 @@ body: _loadingUsers
                       ],
                     ),
                   ))
-              .toList(),
+              ,
         ],
       ),
     );
