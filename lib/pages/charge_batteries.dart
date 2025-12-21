@@ -678,6 +678,23 @@ class _QRScannerPageState extends State<_QRScannerPage> with TickerProviderState
                   const Positioned(top: 0, right: 0, child: _Corner()),
                   const Positioned(bottom: 0, left: 0, child: _Corner()),
                   const Positioned(bottom: 0, right: 0, child: _Corner()),
+
+                  // Center instruction
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        "Position QR code here",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

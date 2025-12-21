@@ -920,7 +920,7 @@ class _QRScannerPageState extends State<_QRScannerPage> with TickerProviderState
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: 24),
                       child: Text(
-                        "Position QR code inside frame",
+                        "Position QR code here",
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white70,

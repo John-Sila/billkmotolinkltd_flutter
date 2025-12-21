@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,17 +15,21 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _captchaController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   bool _isPasswordVisible = false;
   bool _rememberMe = false;
   bool _isLoading = false;
   String? _errorMessage;
+  String _generatedCaptcha = '';
+  bool _isCaptchaChecked = false;
 
   @override
   void initState() {
     super.initState();
     _loadSavedCredentials();
+    _generateCaptcha();
   }
 
 
@@ -48,8 +54,27 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Color _getCaptchaBorderColor() {
+    final input = _captchaController.text.trim();
+    
+    if (input == _generatedCaptcha && input.length == 6) {
+      return Colors.green;
+    } else {
+      return Colors.red;
+    }
+  }
+
+
+
   Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (!_isCaptchaChecked) {
+      setState(() {
+        _errorMessage = 'Please verify you are not a robot';
+      });
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -91,6 +116,42 @@ class _LoginPageState extends State<LoginPage> {
       }
     }
   }
+
+  void _generateCaptcha() {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    final random = Random();
+    _generatedCaptcha = String.fromCharCodes(List.generate(
+      6,
+      (index) => letters.codeUnitAt(random.nextInt(letters.length)),
+    ));
+    setState(() {});
+    setState(() => _isCaptchaChecked = false);
+  }
+
+  void _onCaptchaChanged(bool? value) {
+    if (value == true) {
+      final input = _captchaController.text.trim();
+      
+      // ✅ EXACT MATCH (preserves case - works with upper/lowercase)
+      if (input == _generatedCaptcha) {
+        setState(() => _isCaptchaChecked = true);
+      } else {
+        setState(() {
+          _isCaptchaChecked = false;
+          _captchaController.clear();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Type exactly: "$_generatedCaptcha"'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } else {
+      setState(() => _isCaptchaChecked = false);
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -205,6 +266,140 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                         const SizedBox(height: 24),
+
+
+
+
+                        // ✅ CAPTCHA SECTION
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.grey[300]!),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  // Captcha Display
+                                  Container(
+                                    width: 120,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.blue[600]!, width: 2),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.1),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        _generatedCaptcha,
+                                        style: const TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 4,
+                                          color: Colors.blue,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  // Refresh Button
+                                  IconButton(
+                                    onPressed: _generateCaptcha,
+                                    icon: const Icon(Icons.refresh, color: Colors.blue),
+                                    tooltip: 'Refresh Captcha',
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              // Captcha Input
+                              TextFormField(
+                                controller: _captchaController,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                decoration: InputDecoration(
+                                  labelText: 'Enter captcha above',
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(color: Colors.grey.shade400),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: _getCaptchaBorderColor(),
+                                      width: 2.5,
+                                    ),
+                                  ),
+                                  errorBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(color: Colors.red, width: 2),
+                                  ),
+                                ),
+                                // ✅ REAL-TIME VISUAL FEEDBACK
+                                onChanged: (value) {
+                                  // Auto-uncheck if input changes
+                                  if (_isCaptchaChecked) {
+                                    setState(() => _isCaptchaChecked = false);
+                                  }
+                                },
+                                validator: (value) {
+                                  if (!_isCaptchaChecked) return 'Please verify captcha';
+                                  return null;
+                                },
+                              ),
+
+
+                              // Inside the Captcha Container, after TextFormField:
+                              const SizedBox(height: 16),
+
+                              // ✅ CAPTCHA CHECKBOX (MANDATORY)
+                              Row(
+                                children: [
+                                  Checkbox(
+                                    value: _isCaptchaChecked,
+                                    onChanged: _onCaptchaChanged,  // ✅ Referenced here!
+                                    activeColor: Colors.blue[600],
+                                    checkColor: Colors.white,
+                                  ),
+                                  const Expanded(
+                                    child: Text(
+                                      'I\'m not a robot',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.grey,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+
+
+
+
+
+
+
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+
+
+
+
+
+
+
 
                         // Remember Me
                         Row(
