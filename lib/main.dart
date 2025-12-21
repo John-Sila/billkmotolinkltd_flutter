@@ -1,13 +1,14 @@
 import 'dart:async';
 
+import 'package:billkmotolinkltd/pages/devices.dart';
+import 'package:billkmotolinkltd/services/notifier.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_application_1/pages/charge_batteries.dart';
-import 'package:flutter_application_1/pages/settings.dart';
-import 'package:flutter_application_1/pages/swap_batteries.dart';
-import 'package:flutter_application_1/services/notifier.dart';
+import 'package:billkmotolinkltd/pages/charge_batteries.dart';
+import 'package:billkmotolinkltd/pages/settings.dart';
+import 'package:billkmotolinkltd/pages/swap_batteries.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/firebase_options.dart';
@@ -39,8 +40,8 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   final isDarkMode = prefs.getBool('isDarkMode') ?? false;
 
-  await setupNotificationSystem();
-
+  await NotificationService().initialize();
+  
   runApp(BillkMotolinkApp(initialIsDarkMode: isDarkMode));
 }
 
@@ -54,25 +55,17 @@ Future<bool> requestAllPermissions() async {
   return allGranted;
 }
 
-
 Future<void> setupNotificationSystem() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // 1. Request permissions FIRST
   final permissionsGranted = await requestAllPermissions();
   if (!permissionsGranted) {
-    print("❌ Permissions denied - notifications won't work");
     return;
   }
   
   // 2. Initialize Firebase & notifications
   await Firebase.initializeApp();
-  await initNotifications();
-  
-  // 3. Start background service
-  await initializeBackgroundService();
-  
-  print("✅ Notification system fully setup");
 }
 
 
@@ -213,14 +206,12 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
     Requirements(),
     AssetManager(),
     UserManager(),
-
-
-
     Profiles(),
     CreatePoll(),
     ActivityScheduler(),
     Reports(),
-    UserSettings()
+    UserSettings(),
+    Devices()
   ];
 
   final List<String> _titles = const [
@@ -241,6 +232,7 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
     'Activity Scheduler',
     'Reports',
     'Settings',
+    'Devices',
   ];
 
   @override
@@ -306,7 +298,7 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
     'Manager': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], // Create Budget, Require, Activity Scheduler
     
     // IT only
-    'Systems, IT': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], // Asset Manager, User Manager, Profiles
+    'Systems, IT': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], // Asset Manager, User Manager, Profiles
     
     // HR only
     'Human Resource': [0, 8, 16], // Asset Manager, User Manager, Profiles
@@ -825,6 +817,8 @@ Widget _buildDrawerHeader(BuildContext context) {
         return Icons.bar_chart_rounded;
       case 16:
         return Icons.settings;
+      case 17:
+        return Icons.phone_android;
       default:
         return Icons.circle;
     }

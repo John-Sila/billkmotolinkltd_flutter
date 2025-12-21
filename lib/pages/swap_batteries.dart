@@ -712,39 +712,265 @@ class _QRScannerPage extends StatefulWidget {
   State<_QRScannerPage> createState() => _QRScannerPageState();
 }
 
-class _QRScannerPageState extends State<_QRScannerPage> {
+class _QRScannerPageState extends State<_QRScannerPage> with TickerProviderStateMixin {
   bool _isProcessing = false;
+  bool _torchOn = false; // Manual torch state
   final MobileScannerController controller = MobileScannerController();
+  late AnimationController _dotsController;
+  late Animation<int> _dotsAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _dotsController = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    )..repeat();
+    
+    _dotsAnimation = IntTween(begin: 1, end: 3).animate(
+      CurvedAnimation(
+        parent: _dotsController,
+        curve: const Interval(0.0, 0.9, curve: Curves.easeInOut),
+      ),
+    );
+  }
 
   @override
   void dispose() {
     controller.dispose();
+    _dotsController.dispose();
     super.dispose();
+  }
+
+  String _getDots() {
+    final dotCount = _dotsAnimation.value;
+    return '.' * dotCount;
+  }
+
+  void _toggleTorch() async {
+    try {
+      await controller.toggleTorch();
+      setState(() => _torchOn = !_torchOn);
+    } catch (e) {
+      // Silent fail
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Scanner is active...")),
-      body: MobileScanner(
-        controller: controller,
-        onDetect: (capture) async {
-          if (_isProcessing) return;
-          _isProcessing = true;
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: AnimatedBuilder(
+          animation: _dotsController,
+          builder: (context, child) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.green.withValues(alpha: 0.3), Colors.green.withValues(alpha: 0.1)],
+                ),
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(color: Colors.green.withValues(alpha: 0.6), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.green.withValues(alpha: 0.4),
+                    blurRadius: 16,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(color: Colors.green, blurRadius: 10),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Text(
+                    "Scanner${_getDots()}",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        backgroundColor: Colors.black87,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+        // Premium Torch Button
+        actions: [
+          GestureDetector(
+            onTap: _toggleTorch,
+            child: Container(
+              margin: const EdgeInsets.only(right: 20),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    _torchOn 
+                      ? Colors.yellow.withValues(alpha: 0.4) 
+                      : Colors.orange.withValues(alpha: 0.3),
+                    _torchOn 
+                      ? Colors.orange.withValues(alpha: 0.2) 
+                      : Colors.yellow.withValues(alpha: 0.1),
+                  ],
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: _torchOn 
+                      ? Colors.yellow.withValues(alpha: 0.6) 
+                      : Colors.orange.withValues(alpha: 0.5),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Icon(
+                _torchOn 
+                  ? Icons.flashlight_on_rounded 
+                  : Icons.flashlight_off_rounded,
+                color: _torchOn ? Colors.yellow[200] : Colors.white,
+                size: 26,
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Camera preview
+          MobileScanner(
+            controller: controller,
+            fit: BoxFit.cover,
+            onDetect: (capture) async {
+              if (_isProcessing) return;
+              _isProcessing = true;
 
-          final barcode = capture.barcodes.first;
-          final raw = barcode.rawValue ?? "";
+              final barcode = capture.barcodes.first;
+              final raw = barcode.rawValue ?? "";
+              await controller.stop();
 
-          await controller.stop();
-
-          if (mounted) {
-            Navigator.pop(context, raw);
-          }
-        },
+              if (mounted) {
+                Navigator.pop(context, raw);
+              }
+            },
+          ),
+          
+          // Cinematic vignette overlay
+          Container(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(-0.1, -0.3),
+                radius: 0.65,
+                colors: [
+                  Colors.black.withValues(alpha: 0.45),
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.55),
+                ],
+              ),
+            ),
+          ),
+          
+          // Scanning frame with corners
+          Center(
+            child: Container(
+              width: 270,
+              height: 270,
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Colors.green.withValues(alpha: 0.95),
+                  width: 3.5,
+                ),
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.green.withValues(alpha: 0.6),
+                    blurRadius: 35,
+                    spreadRadius: 3,
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  // Corner brackets
+                  const Positioned(top: 0, left: 0, child: _Corner()),
+                  const Positioned(top: 0, right: 0, child: _Corner()),
+                  const Positioned(bottom: 0, left: 0, child: _Corner()),
+                  const Positioned(bottom: 0, right: 0, child: _Corner()),
+                  
+                  // Center instruction
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        "Position QR code inside frame",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
+
+// Premium Corner Widget
+class _Corner extends StatelessWidget {
+  const _Corner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: Colors.green,
+        borderRadius: const BorderRadius.only(
+          bottomRight: Radius.circular(16),
+          topLeft: Radius.circular(16),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withValues(alpha: 0.7),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+
+
 
 Widget _buildDropdownField<T>({
   required T? value,

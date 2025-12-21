@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/pages/general_as_is_state.dart';
-import 'package:flutter_application_1/pages/human_resource_report.dart';
-import 'package:flutter_application_1/pages/rider_daily_statistics.dart';
-import 'package:flutter_application_1/pages/weekly_analysis_report.dart';
+import 'package:billkmotolinkltd/pages/general_as_is_state.dart';
+import 'package:billkmotolinkltd/pages/human_resource_report.dart';
+import 'package:billkmotolinkltd/pages/rider_daily_statistics.dart';
+import 'package:billkmotolinkltd/pages/weekly_analysis_report.dart';
 
 class Reports extends StatelessWidget {
   const Reports({super.key});

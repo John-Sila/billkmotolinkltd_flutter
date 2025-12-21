@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -14,16 +16,38 @@ class _ActivitySchedulerState extends State<ActivityScheduler> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   bool _isSubmitting = false;
+  late String _randomHintText;
 
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
+
+  static const List<String> _titleHints = [
+    "e.g. Team Building Workshop",
+    "e.g. Product Launch Event", 
+    "e.g. Quarterly Review Meeting",
+    "e.g. Client Pitch Presentation",
+    "e.g. Annual Company Retreat",
+    "e.g. Code Sprint Hackathon",
+    "e.g. Welfare Workshop",
+    "e.g. Sales Strategy Session",
+    "e.g. Leadership Summit",
+    "e.g. Customer Feedback Review",
+  ];
+
+  String _getRandomHint() {
+    final random = Random();
+    return _titleHints[random.nextInt(_titleHints.length)];
+  }
+
   
   @override
   void initState() {
     super.initState();
+    _randomHintText = _getRandomHint();
     // resetAllUserNotifications();
   }
 
+  
   Future<void> resetAllUserNotifications() async {
     Fluttertoast.showToast(
       msg: "Resetting all user notifications...",
@@ -414,7 +438,7 @@ class _ActivitySchedulerState extends State<ActivityScheduler> {
                               TextField(
                                 controller: _titleController,
                                 decoration: InputDecoration(
-                                  hintText: "e.g. Team Building Workshop",
+                                  hintText: _randomHintText,
                                   hintStyle: TextStyle(
                                     color: theme.colorScheme.onSurfaceVariant,
                                   ),
@@ -444,6 +468,8 @@ class _ActivitySchedulerState extends State<ActivityScheduler> {
                                 ),
                                 style: theme.textTheme.titleMedium,
                               ),
+                            
+                            
                             ],
                           ),
                         ),

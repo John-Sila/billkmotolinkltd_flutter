@@ -1,228 +1,425 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui';
-import 'package:firebase_auth/firebase_auth.dart';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:flutter/services.dart';
-import 'package:permission_handler/permission_handler.dart'; // Add this for DartPluginRegistrant
-
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
-
-Future<void> initNotifications() async {
-  const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
-  
-  const InitializationSettings initializationSettings =
-      InitializationSettings(android: initializationSettingsAndroid);
-  
-  const AndroidInitializationSettings initializationSettingsIOS =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
-  
-  const DarwinInitializationSettings initializationSettingsDarwin =
-      DarwinInitializationSettings(
-    requestAlertPermission: true,
-    requestBadgePermission: true,
-    requestSoundPermission: true,
-  );
-  
-  const InitializationSettings fullInitSettings = InitializationSettings(
-    android: initializationSettingsAndroid,
-    iOS: initializationSettingsDarwin,
-  );
-  
-  await flutterLocalNotificationsPlugin.initialize(fullInitSettings);
-}
-
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  late FirebaseFirestore _firestore;
+  late FirebaseAuth _auth;
+  late FirebaseMessaging _messaging;
+  late FlutterLocalNotificationsPlugin _localNotifications;
+  late SharedPreferences _prefs;
+  
+  StreamSubscription? _personalSubscription;
+  StreamSubscription? _generalSubscription;
+  
   String? _lastPersonalNotifId;
   String? _lastGeneralNotifId;
+  bool _isInitialized = false;
+  String? _fcmToken;
 
-  String? _userId; // Store user ID properly
-
-  void startListeners() {
-    _userId = FirebaseAuth.instance.currentUser?.uid;
-    if (_userId == null) {
-      return;
-    }
-    _listenToPersonalNotifications();
-    _listenToGeneralNotifications();
-  }
-
-  void _listenToPersonalNotifications() {
-    _firestore.collection('users').doc(_userId!).snapshots().listen((userDoc) async {
-      if (!userDoc.exists) return;
-      
-      final data = userDoc.data()!;
-      final notifications = data['notifications'] as Map<String, dynamic>? ?? {};
-      final numberOfNotifs = data['numberOfNotifications'] as int? ?? 0;
-      
-      
-      if (numberOfNotifs > 0 && notifications.isNotEmpty) {
-        String? latestNotifId;
-        Timestamp? latestTime;
-        
-        notifications.forEach((notifId, notifData) {
-          final isRead = notifData['isRead'] as bool? ?? true; // Default to true
-          final time = notifData['time'] as Timestamp?;
-          
-          if (!isRead && time != null && 
-              (latestTime == null || time.toDate().isAfter(latestTime!.toDate()))) {
-            latestTime = time;
-            latestNotifId = notifId;
-          }
-        });
-        
-        if (latestNotifId != null && latestNotifId != _lastPersonalNotifId) {
-          _lastPersonalNotifId = latestNotifId;
-          final notifData = notifications[latestNotifId];
-          await _showNotification(
-            title: 'New Personal Notification',
-            body: notifData['message'] ?? 'You have a new notification',
-          );
-        }
-      }
-    }, onError: (error) {
-    });
-  }
-
-  void _listenToGeneralNotifications() async {
-    _firestore.collection('notifications').doc('latest').snapshots().listen((doc) async {
-      print("General doc changed: ${doc.id}");
-      
-      if (doc.exists) {
-        final data = doc.data()!;
-        final targetRoles = List<String>.from(data['targetRoles'] ?? []);
-        print("Target roles: $targetRoles");
-        
-        // Check if current user has matching role
-        final userRole = await _getUserRank();
-        print("Current user role: $userRole");
-        
-        if (userRole != null && targetRoles.contains(userRole)) {
-          print("✅ User eligible for notification");
-          await _showNotification(
-            title: data['title'] ?? 'New Update',
-            body: data['body'] ?? 'New notification available',
-          );
-          _lastGeneralNotifId = doc.id;
-        } else {
-          print("❌ User role '$userRole' not in target roles $targetRoles");
-        }
-      }
-    }, onError: (error) {
-      print("General listener error: $error");
-    });
-  }
-
-  // Helper method to get user's rank
-  Future<String?> _getUserRank() async {
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+    
     try {
-      final userId = _userId ?? FirebaseAuth.instance.currentUser?.uid;
+      WidgetsFlutterBinding.ensureInitialized();
+      
+      // Initialize Firebase
+      await Firebase.initializeApp();
+      _firestore = FirebaseFirestore.instance;
+      _auth = FirebaseAuth.instance;
+      _messaging = FirebaseMessaging.instance;
+      
+      // Initialize SharedPreferences
+      _prefs = await SharedPreferences.getInstance();
+      
+      // Load saved IDs
+      _lastPersonalNotifId = _prefs.getString('last_personal_notif_id');
+      _lastGeneralNotifId = _prefs.getString('last_general_notif_id');
+      
+      // Initialize notifications
+      await _initializeLocalNotifications();
+      
+      // Setup Firebase Messaging
+      await _setupFirebaseMessaging();
+      
+      _isInitialized = true;
+      
+      print('✅ NotificationService initialized successfully');
+      
+      // Start listening if user is logged in
+      if (_auth.currentUser != null) {
+        await _startNotificationListeners();
+        await _saveFcmTokenToUser();
+      }
+      
+    } catch (e, stack) {
+      print('❌ Error initializing NotificationService: $e');
+      print('Stack trace: $stack');
+    }
+  }
+
+  Future<void> _setupFirebaseMessaging() async {
+    try {
+      // Request notification permissions
+      if (Platform.isIOS) {
+        await _messaging.requestPermission(
+          alert: true,
+          announcement: false,
+          badge: true,
+          carPlay: false,
+          criticalAlert: false,
+          provisional: false,
+          sound: true,
+        );
+      }
+      
+      // Get FCM token
+      _fcmToken = await _messaging.getToken();
+      print('FCM Token: $_fcmToken');
+      
+      // Listen for foreground messages
+      FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+      
+      // Handle background messages
+      FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpened);
+      
+      // Handle when app is terminated
+      FirebaseMessaging.instance.getInitialMessage().then(_handleInitialMessage);
+      
+    } catch (e) {
+      print('Error setting up Firebase Messaging: $e');
+    }
+  }
+
+  Future<void> _saveFcmTokenToUser() async {
+    try {
+      final userId = _auth.currentUser?.uid;
+      final fcmToken = _fcmToken;
+      
+      if (userId != null && fcmToken != null) {
+        await _firestore.collection('users').doc(userId).update({
+          'fcmTokens': FieldValue.arrayUnion([fcmToken]),
+          'lastFcmToken': fcmToken,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        print('FCM token saved to user document');
+      }
+    } catch (e) {
+      print('Error saving FCM token: $e');
+    }
+  }
+
+  Future<void> _initializeLocalNotifications() async {
+    try {
+      _localNotifications = FlutterLocalNotificationsPlugin();
+      
+      // Android initialization
+      const AndroidInitializationSettings androidInitializationSettings =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+      
+      // iOS initialization
+      const DarwinInitializationSettings iosInitializationSettings =
+          DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
+      
+      final InitializationSettings initializationSettings =
+          InitializationSettings(
+        android: androidInitializationSettings,
+        iOS: iosInitializationSettings,
+      );
+      
+      await _localNotifications.initialize(
+        initializationSettings,
+        onDidReceiveNotificationResponse: (details) {
+          _handleNotificationTap(details.payload);
+        },
+      );
+      
+      // Create notification channel for Android 8.0+
+      if (Platform.isAndroid) {
+        const AndroidNotificationChannel channel = AndroidNotificationChannel(
+          'important_notifications',
+          'Important Notifications',
+          description: 'This channel is used for important notifications.',
+          importance: Importance.high,
+          playSound: true,
+        );
+        
+        await _localNotifications
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+            ?.createNotificationChannel(channel);
+      }
+      
+      print('✅ Local notifications initialized');
+    } catch (e) {
+      print('❌ Error initializing local notifications: $e');
+    }
+  }
+
+  Future<void> _handleForegroundMessage(RemoteMessage message) async {
+    print('Foreground message received: ${message.notification?.title}');
+    
+    // Show local notification
+    if (message.notification != null) {
+      await _showNotification(
+        id: DateTime.now().millisecondsSinceEpoch % 10000,
+        title: message.notification!.title ?? 'New Notification',
+        body: message.notification!.body ?? 'You have a new message',
+        payload: message.data['type'] ?? 'general',
+      );
+    }
+  }
+
+  Future<void> _handleMessageOpened(RemoteMessage message) async {
+    print('App opened from notification: ${message.data}');
+    _handleNotificationTap(message.data['type']);
+  }
+
+  Future<void> _handleInitialMessage(RemoteMessage? message) async {
+    if (message != null) {
+      print('App launched from terminated state: ${message.data}');
+      _handleNotificationTap(message.data['type']);
+    }
+  }
+
+  void _handleNotificationTap(String? payload) {
+    if (payload == null) return;
+    
+    print('Notification tapped with payload: $payload');
+    
+    // You can use a navigator key or event bus to handle navigation
+    // Example: navigate to notifications screen
+    // navigatorKey.currentState?.pushNamed('/notifications');
+  }
+
+  Future<void> _startNotificationListeners() async {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) return;
+    
+    // Cancel existing subscriptions
+    _personalSubscription?.cancel();
+    _generalSubscription?.cancel();
+    
+    // Listen to personal notifications
+    _personalSubscription = _firestore
+        .collection('users')
+        .doc(userId)
+        .snapshots()
+        .listen(_handlePersonalSnapshot);
+    
+    // Listen to general notifications
+    _generalSubscription = _firestore
+        .collection('notifications')
+        .doc('latest')
+        .snapshots()
+        .listen(_handleGeneralSnapshot);
+    
+    print('✅ Notification listeners started');
+  }
+
+  Future<void> _handlePersonalSnapshot(DocumentSnapshot snapshot) async {
+    try {
+      if (!snapshot.exists) return;
+      
+      final data = snapshot.data() as Map<String, dynamic>;
+      final notifications = data['notifications'] as Map<String, dynamic>? ?? {};
+      
+      if (notifications.isNotEmpty) {
+        await _processPersonalNotifications(notifications);
+      }
+    } catch (e) {
+      print('Error handling personal snapshot: $e');
+    }
+  }
+
+  Future<void> _processPersonalNotifications(Map<String, dynamic> notifications) async {
+    try {
+      String? latestUnreadNotifId;
+      Timestamp? latestTime;
+      
+      notifications.forEach((notifId, notifData) {
+        final isRead = notifData['isRead'] as bool? ?? true;
+        final time = notifData['time'] as Timestamp?;
+        
+        if (!isRead && time != null) {
+          if (latestTime == null || time.millisecondsSinceEpoch > latestTime!.millisecondsSinceEpoch) {
+            latestTime = time;
+            latestUnreadNotifId = notifId;
+          }
+        }
+      });
+      
+      if (latestUnreadNotifId != null && latestUnreadNotifId != _lastPersonalNotifId) {
+        _lastPersonalNotifId = latestUnreadNotifId;
+        await _prefs.setString('last_personal_notif_id', latestUnreadNotifId!);
+        
+        final notifData = notifications[latestUnreadNotifId];
+        await _showNotification(
+          id: 1000,
+          title: notifData['title']?.toString() ?? 'Personal Notification',
+          body: notifData['message']?.toString() ?? 'You have a new notification',
+          payload: 'personal:$latestUnreadNotifId',
+        );
+      }
+    } catch (e) {
+      print('Error processing personal notifications: $e');
+    }
+  }
+
+  Future<void> _handleGeneralSnapshot(DocumentSnapshot snapshot) async {
+    try {
+      if (!snapshot.exists) return;
+      
+      await _processGeneralNotification(snapshot);
+    } catch (e) {
+      print('Error handling general snapshot: $e');
+    }
+  }
+
+  Future<void> _processGeneralNotification(DocumentSnapshot doc) async {
+    try {
+      final data = doc.data() as Map<String, dynamic>;
+      final targetRoles = List<String>.from(data['targetRoles'] ?? []);
+      
+      // Skip if already shown
+      if (doc.id == _lastGeneralNotifId) return;
+      
+      final userRole = await _getUserRole();
+      if (userRole == null) return;
+      
+      if (targetRoles.contains(userRole)) {
+        _lastGeneralNotifId = doc.id;
+        await _prefs.setString('last_general_notif_id', doc.id);
+        
+        await _showNotification(
+          id: 2000,
+          title: data['title']?.toString() ?? 'General Notification',
+          body: data['body']?.toString() ?? 'New update available',
+          payload: 'general:${doc.id}',
+        );
+      }
+    } catch (e) {
+      print('Error processing general notification: $e');
+    }
+  }
+
+  Future<String?> _getUserRole() async {
+    try {
+      final userId = _auth.currentUser?.uid;
       if (userId == null) return null;
       
       final userDoc = await _firestore.collection('users').doc(userId).get();
-      if (userDoc.exists) {
-        final userData = userDoc.data()!;
-        return userData['userRank'] as String?;
-      }
-      return null;
+      return userDoc.data()?['role']?.toString();
     } catch (e) {
-      print("Error getting user rank: $e");
+      print('Error getting user role: $e');
       return null;
     }
   }
 
-
-  Future<void> _showNotification({required String title, required String body}) async {
-    
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'high_importance_channel',
-      'High Importance Notifications',
-      channelDescription: 'Important app notifications',
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: true,
-    );
-    
-    const NotificationDetails notificationDetails = 
-        NotificationDetails(android: androidDetails);
-    
-    await flutterLocalNotificationsPlugin.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000, // Use seconds, not remainder
-      title,
-      body,
-      notificationDetails,
-      payload: 'notification_payload',
-    );
-  }
-}
-
-@pragma('vm:entry-point')
-void onStart(ServiceInstance service) async {
-  DartPluginRegistrant.ensureInitialized();
-  
-  if (service is AndroidServiceInstance) {
-    // CORRECT WAY: Set foreground service with notification
-    service.setAsForegroundService();
-    
-    // CORRECT WAY: Set foreground notification info
-    service.setForegroundNotificationInfo(
-      title: "Notification Service Active",
-      content: "Listening for new notifications...",
-    );
-  }
-
-  service.on('stopService').listen((event) {
-    service.stopSelf();
-  });
-
-
-  // Initialize Firebase and notifications
-  await Firebase.initializeApp();
-  await initNotifications();
-  
-  // Start notification service
-  final notificationService = NotificationService();
-  notificationService.startListeners();
-
-  // Keep service alive - update notification every 30 seconds
-  Timer.periodic(const Duration(seconds: 30), (timer) async {
-    if (service is AndroidServiceInstance) {
-      service.setForegroundNotificationInfo(
-        title: "BILLK Service Running",
-        content: "Running... ${DateTime.now().toString().substring(11, 19)}",
+  Future<void> _showNotification({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    try {
+      const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        'important_notifications',
+        'Important Notifications',
+        channelDescription: 'This channel is used for important notifications.',
+        importance: Importance.high,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
+        colorized: true,
+        color: Colors.blue,
       );
+      
+      const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+      
+      const NotificationDetails platformDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+      
+      await _localNotifications.show(
+        id,
+        title,
+        body,
+        platformDetails,
+        payload: payload,
+      );
+      
+      print('✅ Notification shown: $title');
+    } catch (e) {
+      print('❌ Error showing notification: $e');
     }
-  });
+  }
+
+  // Manual check method
+  Future<void> checkNotificationsManually() async {
+    if (!_isInitialized) {
+      await initialize();
+      return;
+    }
+    
+    try {
+      final userId = _auth.currentUser?.uid;
+      if (userId == null) return;
+      
+      // Check personal notifications
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      if (userDoc.exists) {
+        final notifications = userDoc.data()?['notifications'] as Map<String, dynamic>? ?? {};
+        await _processPersonalNotifications(notifications);
+      }
+      
+      // Check general notifications
+      final generalDoc = await _firestore.collection('notifications').doc('latest').get();
+      if (generalDoc.exists) {
+        await _processGeneralNotification(generalDoc);
+      }
+      
+    } catch (e) {
+      print('Error during manual check: $e');
+    }
+  }
+
+  void onUserLoggedIn() {
+    if (_isInitialized) {
+      _startNotificationListeners();
+      _saveFcmTokenToUser();
+    }
+  }
+
+  void onUserLoggedOut() {
+    _personalSubscription?.cancel();
+    _generalSubscription?.cancel();
+    _personalSubscription = null;
+    _generalSubscription = null;
+  }
+
+  void dispose() {
+    _personalSubscription?.cancel();
+    _generalSubscription?.cancel();
+  }
 }
-
-
-
-Future<void> initializeBackgroundService() async {
-  final service = FlutterBackgroundService();
-  
-  await service.configure(
-    androidConfiguration: AndroidConfiguration(
-      onStart: onStart,
-      autoStart: true,
-      isForegroundMode: true,
-      autoStartOnBoot: true,
-    ),
-    iosConfiguration: IosConfiguration(),
-  );
-  
-  // Start the service
-  await service.startService();
-}
-

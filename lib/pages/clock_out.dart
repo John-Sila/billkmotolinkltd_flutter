@@ -275,6 +275,14 @@ class _ClockOutState extends State<ClockOut> {
     return clockOutVal >= clockInVal;
   }
 
+  String formatTimeElapsed(int timeElapsedMs) {
+    int hours = timeElapsedMs ~/ 3600000; // 3600 * 1000 ms per hour
+    int minutes = (timeElapsedMs % 3600000) ~/ 60000; // 60 * 1000 ms per minute
+    
+    return '${hours.toString().padLeft(1)} hrs ${minutes.toString().padLeft(2)} mins';
+  }
+
+
 
 
   Future<void> clockOut() async {
@@ -320,20 +328,21 @@ class _ClockOutState extends State<ClockOut> {
       }
       // userSnap.get('currentBike');
 
-      // --- EXPENSE MAP ---
+      // --- EXPENSE MAP --- (Fixed)
       Map<String, dynamic> expenseData = {};
       expenseControllers.forEach((key, ctrl) {
-        if (expensesChecked[key]!) {
+        // Skip 'Other' when processing standard checkboxes
+        if (expensesChecked[key]! && key != 'Other') {
           expenseData[key] = double.parse(ctrl.text);
         }
       });
 
+      // Handle 'Other' separately - ONLY if checked and has description
       if (expensesChecked['Other']! && otherExpenseController.text.trim().isNotEmpty) {
         final description = otherExpenseController.text.trim();
         final value = double.parse(expenseControllers['Other']!.text);
-        expenseData[description] = value; // description as key, numeric value
+        expenseData[description] = value; // Only custom description as key
       }
-
 
       // --- NET INCOME CALC ---
       final gross = double.parse(double.parse(grossIncomeController.text).toStringAsFixed(2));
@@ -397,6 +406,7 @@ class _ClockOutState extends State<ClockOut> {
       // -----------------------------------------------------------------------
       // 3. UPDATE USER PROFILE WITH CLOCKOUT DATA
       // -----------------------------------------------------------------------
+      int timeElapsed = (now.millisecondsSinceEpoch - userSnap.get('clockInTime').millisecondsSinceEpoch) as int;
       final clockoutData = {
         "grossIncome": gross,
         "todaysInAppBalance": double.parse(todaysIAB.toStringAsFixed(2)),
@@ -409,14 +419,12 @@ class _ClockOutState extends State<ClockOut> {
         "mileageDifference":
             double.parse(clockOutMileageController.text) - clockinMileage,
         "posted_at": now,
-        "timeElapsed": now.millisecondsSinceEpoch -
-            userSnap.get('clockInTime').millisecondsSinceEpoch
+        "timeElapsed": formatTimeElapsed(timeElapsed)
       };
 
       final notificationId =
         DateTime.now().millisecondsSinceEpoch.toString();
         
-
       await userRef.update({
         "clockouts.$dateKey": clockoutData,
         "currentInAppBalance": todaysIAB,
@@ -784,7 +792,6 @@ class _ClockOutState extends State<ClockOut> {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
-                        color: Colors.black87,
                       ),
                       
                       onChanged: (_) => setState(() {}),

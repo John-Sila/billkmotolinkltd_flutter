@@ -1,3 +1,9 @@
+import 'dart:io';
+
+import 'package:battery_plus/battery_plus.dart';
+import 'package:billkmotolinkltd/services/notifier.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -16,12 +22,29 @@ class _DashboardState extends State<Dashboard> {
   List<QueryDocumentSnapshot<Map<String, dynamic>>> _polls = [];
   bool _loading = true;
   String? _error;
+  final NotificationService _notificationService = NotificationService();
+  final _auth = FirebaseAuth.instance;
 
   @override
   void initState() {
     super.initState();
     _loadAll();
+
+
+    // Listen to auth state changes
+    _auth.authStateChanges().listen((user) {
+      if (user != null) {
+        // User logged in - start notification listeners
+        _notificationService.onUserLoggedIn();
+        uploadDeviceDataToFirestore(user.uid);
+      } else {
+        // User logged out - stop notification listeners
+        _notificationService.onUserLoggedOut();
+      }
+    });
   }
+
+
 
   Future<void> _loadAll() async {
     if (!mounted) return;
@@ -103,6 +126,9 @@ class _DashboardState extends State<Dashboard> {
           _loading = false;
         });
       }
+
+
+      await _notificationService.checkNotificationsManually();
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -110,6 +136,158 @@ class _DashboardState extends State<Dashboard> {
           _error = 'Failed to load dashboard: $e';
         });
       }
+    }
+  }
+
+  Future<void> uploadDeviceDataToFirestore(String uid) async {
+    try {
+      // Check authentication first
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null || uid != user.uid) {
+        throw Exception('User not authenticated or UID mismatch');
+      }
+
+      // Initialize device info
+      DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+      Battery battery = Battery();
+      Connectivity connectivity = Connectivity();
+
+      Map<String, dynamic> deviceData = {
+        'lastUploadTimestamp': FieldValue.serverTimestamp(),
+        'uid': uid,
+        'userEmail': user.email,
+      };
+
+      // Device hardware/software info - CORRECTED PROPERTIES
+      if (Platform.isAndroid) {
+        AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+        deviceData.addAll({
+          'platform': 'android',
+          'model': androidInfo.model,
+          'manufacturer': androidInfo.manufacturer,
+          'brand': androidInfo.brand,
+          'deviceId': androidInfo.id,
+          'product': androidInfo.product,
+          'hardware': androidInfo.hardware,
+          'display': androidInfo.display,
+          'host': androidInfo.host,
+          'osVersion': androidInfo.version.release,
+          'apiLevel': androidInfo.version.sdkInt,
+          'isPhysicalDevice': androidInfo.isPhysicalDevice,
+          'supportedAbis': androidInfo.supportedAbis,
+        });
+      } else if (Platform.isIOS) {
+        IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
+        deviceData.addAll({
+          'platform': 'ios',
+          'model': iosInfo.model,
+          'name': iosInfo.name,
+          'systemName': iosInfo.systemName,
+          'systemVersion': iosInfo.systemVersion,
+          'localizedModel': iosInfo.localizedModel,
+          'utsnameMachine': iosInfo.utsname.machine,
+          'isPhysicalDevice': iosInfo.isPhysicalDevice,
+        });
+      }
+
+      // Battery information
+      try {
+        deviceData['batteryLevel'] = await battery.batteryLevel;
+        BatteryState state = await battery.batteryState;
+        // Convert enum to readable string
+        switch (state) {
+          case BatteryState.full:
+            deviceData['batteryState'] = 'Full';
+            break;
+          case BatteryState.charging:
+            deviceData['batteryState'] = 'Charging';
+            break;
+          case BatteryState.discharging:
+            deviceData['batteryState'] = 'Discharging';
+            break;
+          case BatteryState.unknown:
+            deviceData['batteryState'] = 'Unknown';
+            break;
+          case BatteryState.connectedNotCharging:
+            deviceData['batteryState'] = 'Connected (Not Charging)';
+            break;
+        }
+      } catch (e) {
+        deviceData['batteryLevel'] = null;
+        deviceData['batteryState'] = 'Error';
+        deviceData['batteryError'] = e.toString();
+      }
+
+
+      // Network connectivity - FIXED for new connectivity_plus API
+      try {
+        List<ConnectivityResult> results = await connectivity.checkConnectivity();
+        
+        // Take first result or prioritize (WiFi > Mobile > Other)
+        ConnectivityResult primaryResult = ConnectivityResult.none;
+        if (results.contains(ConnectivityResult.wifi)) {
+          primaryResult = ConnectivityResult.wifi;
+        } else if (results.contains(ConnectivityResult.mobile)) {
+          primaryResult = ConnectivityResult.mobile;
+        } else if (results.isNotEmpty) {
+          primaryResult = results.first;
+        }
+        
+        // Convert to readable string
+        switch (primaryResult) {
+          case ConnectivityResult.wifi:
+            deviceData['networkType'] = 'WiFi';
+            break;
+          case ConnectivityResult.mobile:
+            deviceData['networkType'] = 'Mobile Data';
+            break;
+          case ConnectivityResult.ethernet:
+            deviceData['networkType'] = 'Ethernet';
+            break;
+          case ConnectivityResult.vpn:
+            deviceData['networkType'] = 'VPN';
+            break;
+          case ConnectivityResult.bluetooth:
+            deviceData['networkType'] = 'Bluetooth';
+            break;
+          case ConnectivityResult.other:
+            deviceData['networkType'] = 'Other';
+            break;
+          case ConnectivityResult.none:
+            deviceData['networkType'] = 'Offline';
+            break;
+        }
+      } catch (e) {
+        deviceData['networkType'] = 'Unknown';
+      }
+
+
+
+      // Screen information (Flutter 3+ compatible)
+      final window = WidgetsBinding.instance.window;
+      final mediaQuery = MediaQueryData.fromView(window);
+      deviceData.addAll({
+        'screenWidth': mediaQuery.size.width,
+        'screenHeight': mediaQuery.size.height,
+        'pixelRatio': mediaQuery.devicePixelRatio,
+        'screenPadding': {
+          'top': mediaQuery.padding.top,
+          'bottom': mediaQuery.padding.bottom,
+          'left': mediaQuery.padding.left,
+          'right': mediaQuery.padding.right,
+        },
+      });
+
+      // Update as a map in users/{uid}/device_info document
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .set({
+            'device_info': deviceData,
+          }, SetOptions(merge: true));
+
+    } catch (e) {
+      rethrow;
     }
   }
 
@@ -165,9 +343,6 @@ class _DashboardState extends State<Dashboard> {
         color: theme.colorScheme.primary,
         child: CustomScrollView(
           slivers: [
-
-
-
             SliverAppBar(
               expandedHeight: 200,
               floating: true,
@@ -691,7 +866,6 @@ class _DashboardState extends State<Dashboard> {
     return '${hours}h ${minutes.toString().padLeft(2, '0')}m';
   }
 
-
   Widget _buildStatsCards(ThemeData theme, Map<String, dynamic> user) {
     final stats = [
       {'label': 'Daily Target', 'value': _formatNumber(user['dailyTarget'])},
@@ -870,5 +1044,12 @@ class _DashboardState extends State<Dashboard> {
     return 'KSh ${formatter.format(numValue.toInt())}';
   }
 
+
+
+  @override
+  void dispose() {
+    _notificationService.dispose();
+    super.dispose();
+  }
 
 }

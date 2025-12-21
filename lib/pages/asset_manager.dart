@@ -233,7 +233,7 @@ class _AssetManagerState extends State<AssetManager> {
   Future<void> _deleteDestination(String destination) async {
     final confirmed = await _showConfirmDialog(
       title: 'Delete Destination',
-      content: 'Permanently delete destination "$destination"? This cannot be undone.',
+      content: 'Permanently delete $destination from BILLK locations? This cannot be undone.',
       action: 'Delete',
       actionColor: Colors.red,
     );
@@ -255,43 +255,40 @@ class _AssetManagerState extends State<AssetManager> {
     }
   }
 
+  // 1. UPDATE _deleteBike method to check isAssigned
+  Future<void> _deleteBike(String bike) async {
+    // Check if bike is assigned
+    final bikeData = _bikes[bike] as Map<String, dynamic>?;
+    final isAssigned = bikeData?['isAssigned'] == true;
+    
+    if (isAssigned) {
+      _showSnackBar('Cannot delete assigned bike "$bike"', Colors.orange);
+      return;
+    }
 
+    final confirmed = await _showConfirmDialog(
+      title: 'Delete Bike',
+      content: 'Permanently delete $bike from BILLK bikes? This cannot be undone.',
+      action: 'Delete',
+      actionColor: Colors.red,
+    );
 
-// 1. UPDATE _deleteBike method to check isAssigned
+    if (confirmed != true) return;
 
-Future<void> _deleteBike(String bike) async {
-  // Check if bike is assigned
-  final bikeData = _bikes[bike] as Map<String, dynamic>?;
-  final isAssigned = bikeData?['isAssigned'] == true;
-  
-  if (isAssigned) {
-    _showSnackBar('Cannot delete assigned bike "$bike"', Colors.orange);
-    return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('general')
+          .doc('general_variables')
+          .update({
+        'bikes.$bike': FieldValue.delete(),
+      });
+
+      await _loadGeneralVariables();
+      _showSnackBar('Bike deleted successfully', Colors.green);
+    } catch (e) {
+      _showSnackBar('Failed to delete bike: $e', Colors.red);
+    }
   }
-
-  final confirmed = await _showConfirmDialog(
-    title: 'Delete Bike',
-    content: 'Permanently delete bike "$bike"? This cannot be undone.',
-    action: 'Delete',
-    actionColor: Colors.red,
-  );
-
-  if (confirmed != true) return;
-
-  try {
-    await FirebaseFirestore.instance
-        .collection('general')
-        .doc('general_variables')
-        .update({
-      'bikes.$bike': FieldValue.delete(),
-    });
-
-    await _loadGeneralVariables();
-    _showSnackBar('Bike deleted successfully', Colors.green);
-  } catch (e) {
-    _showSnackBar('Failed to delete bike: $e', Colors.red);
-  }
-}
 
   // 2. UPDATE _deleteBattery method to check assignedRider
   Future<void> _deleteBattery(String batteryId, String batteryName) async {
@@ -312,7 +309,7 @@ Future<void> _deleteBike(String bike) async {
 
     final confirmed = await _showConfirmDialog(
       title: 'Delete Battery',
-      content: 'Permanently delete battery "$batteryName"? This cannot be undone.',
+      content: 'Permanently delete $batteryName from BILLK assets? This cannot be undone.',
       action: 'Delete',
       actionColor: Colors.red,
     );
